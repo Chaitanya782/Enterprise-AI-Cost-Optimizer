@@ -1,0 +1,32 @@
+# Core dependencies
+streamlit
+python-dotenv
+requests
+
+# Lyzr dependencies
+lyzr
+
+# AI/ML dependencies
+# Google Gemini dependencies
+google-generativeai
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+langchain
+tiktoken
+
+# AWS dependencies (optional for now)
+# boto3==1.29.0
+
+# Utilities
+pandas
+numpy
+pydantic
+colorama
+
+# Development dependencies
+pytest
+black
+flake8
+
+plotly
