@@ -43,10 +43,19 @@ Enterprise AI teams struggle with:
 ```plaintext
 ┌─────────────── Streamlit UI ───────────────┐
 │                                             │
-│  →→→→→→  Lyzr Studio Agent Engine  →→→→→→  │
-│     ┌──────────── Orchestrator ───────────┐ │
-│     │ Task Analyzer  |  Cost Calc  | ROI  │ │
-└─────┴─────────────────────────────────────┘
+│  ←←←← Custom Orchestrator (Brain) ←←←←     │
+│     ┌─────────────────────────────────────┐ │
+│     │ • Intent Detection                  │ │
+│     │ • Metric Extraction                 │ │
+│     │ • Agent Coordination                │ │
+│     │ • Result Synthesis                  │ │
+│     └─────────────────────────────────────┘ │
+│            ↓ ↓ ↓                           │
+│  ┌─────────────────────────────────────────┐ │
+│  │ Task Analyzer | Cost Calc | ROI Agent  │ │
+│  │    (Lyzr Studio Agents)                │ │
+│  └─────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
 ````
 
 ---
@@ -147,4 +156,4 @@ MIT License — Free to use, modify, and distribute. See [LICENSE](LICENSE) for 
 
 **Built with ❤️ for the 100xEngineers Generative AI Buildathon 2.0**
 
-```
+
