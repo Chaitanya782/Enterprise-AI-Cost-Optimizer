@@ -5,6 +5,7 @@ import streamlit as st
 from pathlib import Path
 import sys
 from functools import lru_cache
+import traceback
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -19,10 +20,12 @@ from app.components.chat_ui import render_chat_interface
 def get_example_queries():
     """Get cached example queries"""
     return [
-        "We handle 500 support tickets daily, each taking 15 minutes. How can AI help?",
-        "Compare costs of GPT-4 vs Gemini for 10,000 daily requests",
-        "Calculate ROI for $50,000 AI chatbot implementation",
-        "What tasks should we automate first in our customer service department?"
+        "We're spending $85,000/month on AI infrastructure (OpenAI and Anthropic). Our support team of 12 handles 2,500 tickets daily (15 min each). We want to reduce costs by 40% and automate processes. ROI analysis for $200K investment?",
+        "Compare costs of GPT-4 vs Claude vs Gemini for 10,000 daily requests with 200 input and 300 output tokens",
+        "Calculate ROI for automating our content team that creates 50 blog posts monthly, taking 4 hours each",
+        "We process 300 contracts monthly, 2 hours each for review. What automation opportunities exist?",
+        "Analyze our customer service workflow for AI automation opportunities",
+        "What's the most cost-effective LLM for high-volume customer support chatbot?"
     ]
 
 
@@ -31,7 +34,9 @@ def initialize_session_state():
     defaults = {
         'messages': [],
         'total_cost': 0.0,
-        'orchestrator': None
+        'orchestrator': None,
+        'session_id': None,
+        'initialization_error': None
     }
 
     for key, value in defaults.items():
@@ -39,152 +44,251 @@ def initialize_session_state():
             st.session_state[key] = value
 
 
+def _check_service_status(service_name: str, api_key: str) -> tuple[str, bool]:
+    """Check if a service is configured"""
+    if api_key:
+        return f"**{service_name}:** ✅ Connected", True
+    return f"**{service_name}:** ❌ Not configured", False
+
+
 def render_sidebar():
     """Render optimized sidebar with status and controls"""
     with st.sidebar:
         st.header("🔧 Configuration")
+        st.subheader("🔌 Connection Status")
 
-        # Connection status
-        st.subheader("Connection Status")
-        statuses = [
-            ("Lyzr Studio", "✅ Connected" if config.lyzr_api_key else "❌ Not configured"),
-            ("Google Gemini", "✅ Connected" if config.gemini_api_key else "❌ Not configured")
+        # Check services
+        services = [
+            ("Lyzr Studio", getattr(config, 'lyzr_api_key', None)),
+            ("Google Gemini", getattr(config, 'gemini_api_key', None))
         ]
 
-        for service, status in statuses:
-            st.write(f"**{service}:** {status}")
+        for service, api_key in services:
+            status, is_connected = _check_service_status(service, api_key)
+            if is_connected:
+                st.success(status)
+            else:
+                st.error(status)
+
+        # Orchestrator status
+        if st.session_state.orchestrator:
+            st.success("**Orchestrator:** ✅ Initialized")
+        elif st.session_state.initialization_error:
+            st.error("**Orchestrator:** ❌ Failed to initialize")
+            with st.expander("Error Details"):
+                st.code(st.session_state.initialization_error)
+        else:
+            st.warning("**Orchestrator:** ⏳ Not initialized")
 
         st.divider()
 
         # Usage statistics
         st.subheader("📊 Usage Statistics")
-        query_count = len(st.session_state.messages) // 2
+        query_count = len([msg for msg in st.session_state.messages if msg["role"] == "user"])
         st.metric("Total Queries", query_count)
         st.metric("Estimated Cost", f"${st.session_state.total_cost:.4f}")
 
         st.divider()
 
-        # Example queries with optimized buttons
-        st.subheader("💡 Example Queries")
-        for i, query in enumerate(get_example_queries()):
-            if st.button(f"{query[:50]}...", key=f"example_{i}"):
+        # Example queries
+        st.subheader("💡 Try These Examples")
+
+        example_labels = [
+            "💰 Infrastructure Cost Optimization ($85K/month)",
+            "📊 LLM Cost Comparison Analysis",
+            "✍️ Content Generation ROI Analysis",
+            "📄 Document Processing Automation",
+            "🎧 Customer Service Workflow Analysis",
+            "🤖 Cost-Effective LLM Selection"
+        ]
+
+        for i, (label, query) in enumerate(zip(example_labels, get_example_queries())):
+            if st.button(label, key=f"example_{i}", help=f"Click to ask: {query[:100]}..."):
                 st.session_state.messages.append({"role": "user", "content": query})
                 st.rerun()
 
         st.divider()
 
-        # Clear chat
-        if st.button("🗑️ Clear Chat") and st.session_state.messages:
-            st.session_state.messages.clear()
-            st.session_state.total_cost = 0.0
-            st.rerun()
+        # Control buttons
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ Clear Chat") and st.session_state.messages:
+                st.session_state.messages.clear()
+                st.session_state.total_cost = 0.0
+                st.rerun()
+
+        with col2:
+            if st.button("🔄 Reset App"):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+
+        # Debug mode toggle
+        st.session_state.show_debug = st.checkbox("🔧 Debug Mode",
+                                                 value=st.session_state.get("show_debug", False))
 
 
 def render_welcome_screen():
     """Render welcome screen with quick start guide"""
-    col1, col2, col3 = st.columns([1, 2, 1])
+    st.markdown("### 🚀 Welcome to Your AI Architecture Consultant")
+
+    st.info(
+        "🎯 **I can help you with:**\n\n"
+        "• **💰 Cost Analysis**: Compare LLM costs and optimize spending\n"
+        "• **📋 Task Automation**: Identify AI automation opportunities\n"
+        "• **📊 ROI Calculation**: Calculate return on investment for AI projects\n"
+        "• **🛣️ Implementation Planning**: Get step-by-step AI adoption roadmaps\n\n"
+        "💬 **Just describe your situation or ask a question to get started!**"
+    )
+
+    st.markdown("### 🔥 Popular Use Cases")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        **🏢 For Enterprises:**
+        - Analyze customer service automation ROI
+        - Compare LLM providers for large-scale deployment
+        - Calculate infrastructure cost optimizations
+        - Plan phased AI implementation roadmaps
+        """)
 
     with col2:
-        st.info(
-            "🎯 **How I can help you:**\n\n"
-            "• **Task Analysis**: Identify AI automation opportunities\n"
-            "• **Cost Calculation**: Compare LLM costs and find optimal options\n"
-            "• **ROI Estimation**: Calculate return on investment for AI projects\n"
-            "• **Implementation Roadmap**: Get step-by-step AI adoption plans\n\n"
-            "💬 Just describe your use case or ask a question to get started!"
-        )
+        st.markdown("""
+        **💡 For Specific Projects:**
+        - Document processing automation
+        - Content generation workflow optimization
+        - Customer support chatbot implementation
+        - Data analysis and reporting automation
+        """)
 
-        st.markdown("### 🚀 Quick Start")
+    st.markdown("### 📝 Sample Questions You Can Ask")
+    sample_questions = [
+        "We spend $50K/month on OpenAI APIs. How can we reduce costs by 30%?",
+        "ROI analysis for automating our customer support with 1000 daily tickets",
+        "Compare GPT-4 vs Claude for content generation with 500 articles/month",
+        "What tasks should we automate first in our sales process?"
+    ]
 
-        # Quick start cards
-        cards = [
-            ("🏢 For Enterprises", [
-                "Analyze customer service automation",
-                "Calculate AI implementation costs",
-                "Compare different LLM providers",
-                "Estimate ROI and payback period"
-            ]),
-            ("💰 Cost Optimization", [
-                "Find the most cost-effective LLM",
-                "Reduce token usage strategies",
-                "Optimize prompt engineering",
-                "Scale efficiently with growth"
-            ])
-        ]
-
-        cols = st.columns(2)
-        for col, (title, items) in zip(cols, cards):
-            with col:
-                st.markdown(f"**{title}:**")
-                for item in items:
-                    st.markdown(f"- {item}")
+    for question in sample_questions:
+        st.markdown(f"• *{question}*")
 
 
 @st.cache_resource
 def initialize_orchestrator():
-    """Initialize orchestrator with caching"""
+    """Initialize orchestrator with caching and detailed error handling"""
     try:
-        return Orchestrator()
+        logger.info("Initializing orchestrator...")
+        orchestrator = Orchestrator()
+        logger.info("Orchestrator initialized successfully")
+        return orchestrator, None
     except Exception as e:
-        logger.error(f"Failed to initialize orchestrator: {e}")
-        raise
+        error_msg = f"Failed to initialize orchestrator: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return None, traceback.format_exc()
+
+
+def render_configuration_help():
+    """Render configuration error help"""
+    st.error("⚠️ **Configuration Error**: AI agents could not be initialized.")
+
+    with st.expander("🔍 Error Details & Configuration Help"):
+        st.code(st.session_state.initialization_error)
+
+        st.markdown("""
+        **Common solutions:**
+        
+        1. **Check your `.env` file** - Make sure it contains:
+        ```
+        LYZR_API_KEY=your_lyzr_api_key
+        LYZR_AGENT_ID=your_agent_id  
+        LYZR_USER_ID=your_email
+        GEMINI_API_KEY=your_gemini_key
+        ```
+        
+        2. **Verify API keys** - Ensure all API keys are valid and active
+        3. **Check network connection** - Ensure you can access external APIs
+        4. **Try refreshing** - Click "Reset App" in the sidebar
+        """)
 
 
 def main():
     """Optimized main application entry point"""
     # Page configuration
     st.set_page_config(
-        page_title=config.app_title,
-        page_icon=config.app_icon,
+        page_title="Enterprise AI Cost Optimizer",
+        page_icon="🤖",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
+    # FIXED: Minimal CSS that respects Streamlit themes
+    st.markdown("""
+    <style>
+    /* Only essential chat improvements that work with both themes */
+    .stChatMessage {
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    
+    .stButton > button {
+        width: 100%;
+        text-align: left;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        height: auto;
+        padding: 0.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     initialize_session_state()
 
     # Header
-    st.title(config.app_title)
-    st.markdown("### Your AI Architecture Consultant for Cost Optimization")
+    st.title("🤖 Enterprise AI Cost Optimizer")
+    st.markdown("### *Your AI Architecture Consultant for Cost Optimization & Automation*")
 
-    # Configuration validation
-    if not config.is_valid:
-        st.error("⚠️ Configuration errors detected. Please check your .env file.")
-        with st.expander("Configuration Help"):
-            st.markdown("""
-            **Required environment variables:**
-            ```
-            LYZR_API_KEY=your_lyzr_api_key
-            LYZR_AGENT_ID=your_agent_id  
-            LYZR_USER_ID=your_email
-            GEMINI_API_KEY=your_gemini_key
-            ```
-            """)
-        st.stop()
-
-    # Initialize orchestrator with error handling
-    if not st.session_state.orchestrator:
+    # Initialize orchestrator if needed
+    if not st.session_state.orchestrator and not st.session_state.initialization_error:
         with st.spinner("🤖 Initializing AI agents..."):
-            try:
-                st.session_state.orchestrator = initialize_orchestrator()
-                logger.info("Orchestrator initialized successfully")
-            except Exception as e:
-                st.error(f"❌ Failed to initialize agents: {e}")
-                st.stop()
+            orchestrator, error = initialize_orchestrator()
+            if orchestrator:
+                st.session_state.orchestrator = orchestrator
+                st.success("✅ AI agents initialized successfully!")
+            else:
+                st.session_state.initialization_error = error
+                st.error("❌ Failed to initialize AI agents")
 
-    # Render sidebar
+    # Handle configuration errors
+    if st.session_state.initialization_error:
+        render_configuration_help()
+        render_sidebar()
+        return
+
     render_sidebar()
 
     # Main content
     if not st.session_state.messages:
         render_welcome_screen()
+    else:
+        st.markdown("---")
 
     # Chat interface
-    st.divider()
-    render_chat_interface(st.session_state.orchestrator)
+    if st.session_state.orchestrator:
+        render_chat_interface(st.session_state.orchestrator)
+    else:
+        st.warning("🔄 Please fix the configuration issues above to start using the assistant.")
 
     # Footer
-    st.divider()
-    st.caption("Built with ❤️ using Lyzr Studio | 100xEngineers Buildathon 2.0")
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.caption("Built with ❤️ using Lyzr Studio")
+    with col2:
+        st.caption("100xEngineers Buildathon 2.0")
+    with col3:
+        status = "🟢 Ready for analysis" if st.session_state.orchestrator else "🔴 Configuration needed"
+        st.caption(status)
 
 
 if __name__ == "__main__":
@@ -193,4 +297,9 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         logger.error(f"Application error: {e}", exc_info=True)
-        st.error(f"💥 Application error: {e}")
+        st.error(f"💥 **Application Error**: {e}")
+
+        with st.expander("🔍 Technical Details"):
+            st.code(traceback.format_exc())
+
+        st.markdown("**Please try refreshing the page or contact support if the issue persists.**")

@@ -1,440 +1,202 @@
-# """Export functionality for analysis results"""
-# import streamlit as st
-# import json
-# import pandas as pd
-# from typing import Dict, Any
-# from datetime import datetime
-#
-#
-# def add_export_buttons(analysis: Dict[str, Any]):
-#     """Add export buttons for analysis results"""
-#     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-#     col1, col2, col3 = st.columns(3)
-#
-#     with col1:
-#         st.download_button(
-#             label="📄 Download JSON",
-#             data=json.dumps(analysis, indent=2),
-#             file_name=f"ai_cost_analysis_{timestamp}.json",
-#             mime="application/json"
-#         )
-#
-#     with col2:
-#         # Export CSV if cost data exists
-#         if cost_breakdown := analysis.get("analysis", {}).get("costs", {}).get("cost_breakdown"):
-#             csv = pd.DataFrame.from_dict(cost_breakdown, orient='index').to_csv()
-#             st.download_button(
-#                 label="📊 Download Cost CSV",
-#                 data=csv,
-#                 file_name=f"ai_cost_comparison_{timestamp}.csv",
-#                 mime="text/csv"
-#             )
-#
-#     with col3:
-#         st.download_button(
-#             label="📝 Download Report",
-#             data=generate_text_report(analysis),
-#             file_name=f"ai_cost_report_{timestamp}.txt",
-#             mime="text/plain"
-#         )
-#
-#
-# def generate_text_report(analysis: Dict[str, Any]) -> str:
-#     """Generate a text report from analysis"""
-#     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-#
-#     sections = [
-#         "ENTERPRISE AI COST OPTIMIZATION REPORT",
-#         "=" * 50,
-#         f"Generated: {timestamp}",
-#         f"Query: {analysis.get('query', 'N/A')}",
-#         ""
-#     ]
-#
-#     # Recommendations
-#     if recs := analysis.get("recommendations"):
-#         sections.extend([
-#             "KEY RECOMMENDATIONS:",
-#             "-" * 30,
-#             *[f"• {rec}" for rec in recs],
-#             ""
-#         ])
-#
-#     # Cost Analysis
-#     if cost_data := analysis.get("analysis", {}).get("costs"):
-#         sections.extend(["COST ANALYSIS:", "-" * 30])
-#
-#         if breakdown := cost_data.get("cost_breakdown"):
-#             for model, costs in breakdown.items():
-#                 sections.extend([
-#                     f"\n{model}:",
-#                     f"  Daily Cost: ${costs['daily_cost']:.2f}",
-#                     f"  Monthly Cost: ${costs['monthly_cost']:.0f}",
-#                     f"  Annual Cost: ${costs['annual_cost']:.0f}"
-#                 ])
-#         sections.append("")
-#
-#     # ROI Analysis
-#     if roi_data := analysis.get("analysis", {}).get("roi"):
-#         if metrics := roi_data.get("basic_metrics", {}):
-#             sections.extend([
-#                 "ROI ANALYSIS:",
-#                 "-" * 30,
-#                 f"Implementation Cost: ${metrics.get('implementation_cost', 0):,.0f}",
-#                 f"Annual Benefit: ${metrics.get('annual_benefit', 0):,.0f}",
-#                 f"ROI Percentage: {metrics.get('roi_percentage', 0):.1f}%",
-#                 f"Payback Period: {metrics.get('payback_period_years', 0):.1f} years",
-#                 ""
-#             ])
-#
-#     return "\n".join(sections)
-
 """
 Export functionality for analysis results
 """
 import streamlit as st
 import json
 import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 from datetime import datetime
-import io
 
 
 def add_export_buttons(analysis: Dict[str, Any]):
     """Add export buttons for analysis results"""
+    st.markdown("### 📥 Export Analysis Results")
 
     col1, col2, col3 = st.columns(3)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    with col1:
-        # Export as JSON (complete data)
-        json_str = json.dumps(analysis, indent=2, default=str)
-        st.download_button(
-            label="📄 Download Complete JSON",
-            data=json_str,
-            file_name=f"ai_cost_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-            mime="application/json"
-        )
+    export_configs = [
+        (col1, "📊 Download CSV", "export_csv_btn", convert_to_csv, "csv", "text/csv"),
+        (col2, "📋 Download JSON", "export_json_btn", lambda x: json.dumps(x, indent=2, default=str), "json", "application/json"),
+        (col3, "📧 Generate Summary", "export_summary_btn", generate_summary, None, None)
+    ]
 
-    with col2:
-        # Export as comprehensive CSV
-        csv_data = generate_comprehensive_csv(analysis)
-        if csv_data:
-            st.download_button(
-                label="📊 Download Analysis CSV",
-                data=csv_data,
-                file_name=f"ai_cost_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
-            )
+    for col, label, key, converter, file_ext, mime_type in export_configs:
+        with col:
+            if st.button(label, key=key):
+                data = converter(analysis)
 
-    with col3:
-        # Export as detailed text report
-        report = generate_detailed_report(analysis)
-        st.download_button(
-            label="📝 Download Full Report",
-            data=report,
-            file_name=f"ai_cost_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-            mime="text/plain"
-        )
+                if file_ext:  # Download button
+                    st.download_button(
+                        label=f"💾 Download {file_ext.upper()} File",
+                        data=data,
+                        file_name=f"ai_analysis_{timestamp}.{file_ext}",
+                        mime=mime_type
+                    )
+                else:  # Text area for summary
+                    st.text_area("📝 Analysis Summary", data, height=200)
 
 
-def generate_comprehensive_csv(analysis: Dict[str, Any]) -> str:
-    """Generate comprehensive CSV with all analysis data"""
+def _extract_cost_data(analysis: Dict[str, Any]) -> List[List[str]]:
+    """Extract cost data for CSV export"""
+    rows = []
+    cost_data = analysis.get("analysis", {}).get("costs", {}).get("cost_breakdown")
 
-    all_data = []
+    if not cost_data:
+        return rows
 
-    # Extract cost data
-    if "costs" in analysis.get("analysis", {}) and "cost_breakdown" in analysis["analysis"]["costs"]:
-        cost_data = analysis["analysis"]["costs"]["cost_breakdown"]
-        for model, costs in cost_data.items():
-            all_data.append({
-                "Category": "Cost Analysis",
-                "Item": model,
-                "Daily Cost": costs.get("daily_cost", 0),
-                "Monthly Cost": costs.get("monthly_cost", 0),
-                "Annual Cost": costs.get("annual_cost", 0),
-                "Cost per Request": costs.get("cost_per_request", 0)
-            })
+    rows.extend([
+        ["Cost Analysis", ""],
+        ["Model", "Monthly Cost", "Daily Cost", "Cost per Request", "Provider"]
+    ])
 
-    # Extract infrastructure data
-    if "infrastructure" in analysis.get("analysis", {}):
-        infra = analysis["analysis"]["infrastructure"]
-        all_data.append({
-            "Category": "Infrastructure",
-            "Item": "Current Spend",
-            "Monthly Cost": infra.get("current_spend", 0),
-            "Annual Cost": infra.get("current_spend", 0) * 12
-        })
-        all_data.append({
-            "Category": "Infrastructure",
-            "Item": "Target Spend",
-            "Monthly Cost": infra.get("target_spend", 0),
-            "Annual Cost": infra.get("target_spend", 0) * 12
-        })
-        all_data.append({
-            "Category": "Infrastructure",
-            "Item": "Potential Savings",
-            "Monthly Cost": infra.get("potential_savings", 0),
-            "Annual Cost": infra.get("annual_savings", 0)
-        })
+    for model, costs in cost_data.items():
+        if isinstance(costs, dict):
+            rows.append([
+                model,
+                f"${costs.get('monthly_cost', 0):.2f}",
+                f"${costs.get('daily_cost', 0):.2f}",
+                f"${costs.get('cost_per_request', 0):.4f}",
+                costs.get('provider', 'Unknown')
+            ])
 
-    # Extract ROI data
-    if "roi" in analysis.get("analysis", {}):
-        roi_metrics = analysis["analysis"]["roi"].get("basic_metrics", {})
-        all_data.append({
-            "Category": "ROI Analysis",
-            "Item": "Implementation Cost",
-            "Value": roi_metrics.get("implementation_cost", 0)
-        })
-        all_data.append({
-            "Category": "ROI Analysis",
-            "Item": "Annual Benefit",
-            "Value": roi_metrics.get("annual_benefit", 0)
-        })
-        all_data.append({
-            "Category": "ROI Analysis",
-            "Item": "ROI Percentage",
-            "Value": f"{roi_metrics.get('roi_percentage', 0):.1f}%"
-        })
-        all_data.append({
-            "Category": "ROI Analysis",
-            "Item": "Payback Period",
-            "Value": f"{roi_metrics.get('payback_period_years', 0):.1f} years"
-        })
-
-    if all_data:
-        df = pd.DataFrame(all_data)
-        return df.to_csv(index=False)
-    return ""
+    rows.append(["", ""])
+    return rows
 
 
-def generate_detailed_report(analysis: Dict[str, Any]) -> str:
-    """Generate a detailed text report from analysis"""
+def _extract_roi_data(analysis: Dict[str, Any]) -> List[List[str]]:
+    """Extract ROI data for CSV export"""
+    rows = []
+    roi_data = analysis.get("analysis", {}).get("roi", {}).get("basic_metrics")
 
-    report = []
-    report.append("=" * 80)
-    report.append("ENTERPRISE AI COST OPTIMIZATION REPORT")
-    report.append("=" * 80)
-    report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    report.append(f"Query: {analysis.get('query', 'N/A')}")
-    report.append("")
+    if not roi_data:
+        return rows
 
-    # Executive Summary
-    report.append("EXECUTIVE SUMMARY")
-    report.append("-" * 40)
-    if "recommendations" in analysis:
-        for i, rec in enumerate(analysis["recommendations"], 1):
-            # Clean up the recommendation text
-            clean_rec = rec.replace("**", "").replace("*", "")
-            report.append(f"{i}. {clean_rec}")
-    report.append("")
+    rows.extend([
+        ["ROI Analysis", ""],
+        ["Metric", "Value"],
+        ["ROI Percentage", f"{roi_data.get('roi_percentage', 0)}%"],
+        ["Payback Period", f"{roi_data.get('payback_period_years', 0):.1f} years"],
+        ["Net Benefit", f"${roi_data.get('net_benefit', 0):,.0f}"],
+        ["", ""]
+    ])
 
-    # Infrastructure Analysis
-    if "infrastructure" in analysis.get("analysis", {}):
-        report.append("INFRASTRUCTURE COST ANALYSIS")
-        report.append("-" * 40)
-        infra = analysis["analysis"]["infrastructure"]
-
-        report.append(f"Current Monthly Spend: ${infra.get('current_spend', 0):,.0f}")
-        report.append(f"Target Monthly Spend: ${infra.get('target_spend', 0):,.0f}")
-        report.append(f"Potential Monthly Savings: ${infra.get('potential_savings', 0):,.0f}")
-        report.append(f"Annual Savings Opportunity: ${infra.get('annual_savings', 0):,.0f}")
-        report.append(f"Reduction Percentage: {infra.get('reduction_percentage', 0):.0f}%")
-        report.append("")
-
-        if "providers" in infra:
-            report.append("Providers Analyzed:")
-            for provider in infra["providers"]:
-                report.append(f"  • {provider}")
-            report.append("")
-
-        if "detailed_analysis" in infra:
-            report.append("Detailed Analysis:")
-            report.append("-" * 20)
-            # Split the analysis into lines and format
-            analysis_lines = infra["detailed_analysis"].split('\n')
-            for line in analysis_lines:
-                if line.strip():
-                    report.append(line)
-            report.append("")
-
-    # Cost Analysis
-    if "costs" in analysis.get("analysis", {}):
-        report.append("LLM COST COMPARISON")
-        report.append("-" * 40)
-        cost_data = analysis["analysis"]["costs"]
-
-        if "cost_breakdown" in cost_data:
-            # Create a simple table
-            report.append(f"{'Model':<20} {'Daily':<12} {'Monthly':<12} {'Annual':<12} {'Per Request':<12}")
-            report.append("-" * 68)
-
-            for model, costs in cost_data["cost_breakdown"].items():
-                report.append(
-                    f"{model:<20} "
-                    f"${costs['daily_cost']:<11.2f} "
-                    f"${costs['monthly_cost']:<11,.0f} "
-                    f"${costs['annual_cost']:<11,.0f} "
-                    f"${costs['cost_per_request']:<11.4f}"
-                )
-            report.append("")
-
-        if "recommendations" in cost_data:
-            report.append("Cost Optimization Recommendations:")
-            report.append("-" * 20)
-            recommendations_text = cost_data["recommendations"]
-            for line in recommendations_text.split('\n'):
-                if line.strip():
-                    report.append(line)
-            report.append("")
-
-    # ROI Analysis
-    if "roi" in analysis.get("analysis", {}):
-        report.append("ROI ANALYSIS")
-        report.append("-" * 40)
-        roi_data = analysis["analysis"]["roi"]
-
-        if "basic_metrics" in roi_data:
-            metrics = roi_data["basic_metrics"]
-            report.append(f"Implementation Cost: ${metrics.get('implementation_cost', 0):,.0f}")
-            report.append(f"Annual Benefit: ${metrics.get('annual_benefit', 0):,.0f}")
-            report.append(f"Net Benefit: ${metrics.get('net_benefit', 0):,.0f}")
-            report.append(f"ROI Percentage: {metrics.get('roi_percentage', 0):.1f}%")
-            report.append(f"Payback Period: {metrics.get('payback_period_years', 0):.1f} years")
-            report.append("")
-
-        if "detailed_analysis" in roi_data:
-            report.append("Detailed ROI Analysis:")
-            report.append("-" * 20)
-            analysis_text = roi_data["detailed_analysis"]
-            for line in analysis_text.split('\n'):
-                if line.strip():
-                    report.append(line)
-            report.append("")
-
-    # Task Analysis
-    if "tasks" in analysis.get("analysis", {}):
-        report.append("TASK AUTOMATION ANALYSIS")
-        report.append("-" * 40)
-
-        task_data = analysis["analysis"]["tasks"]
-        if isinstance(task_data, dict) and "analysis" in task_data:
-            task_text = task_data["analysis"]
-        else:
-            task_text = str(task_data)
-
-        for line in task_text.split('\n'):
-            if line.strip():
-                report.append(line)
-        report.append("")
-
-    # Migration Analysis
-    if "migration" in analysis.get("analysis", {}):
-        report.append("MIGRATION ANALYSIS")
-        report.append("-" * 40)
-
-        migration_data = analysis["analysis"]["migration"]
-        if "analysis" in migration_data:
-            migration_text = migration_data["analysis"]
-            for line in migration_text.split('\n'):
-                if line.strip():
-                    report.append(line)
-        report.append("")
-
-    # Implementation Timeline
-    report.append("IMPLEMENTATION TIMELINE")
-    report.append("-" * 40)
-    report.append("Week 1-2: Quick Wins")
-    report.append("  • Audit current usage patterns")
-    report.append("  • Implement caching and optimization")
-    report.append("  • Set up monitoring dashboards")
-    report.append("")
-    report.append("Week 3-4: Optimization Phase")
-    report.append("  • Deploy request batching")
-    report.append("  • Test alternative models")
-    report.append("  • Implement smart routing")
-    report.append("")
-    report.append("Month 2: Migration")
-    report.append("  • Migrate low-risk workloads")
-    report.append("  • A/B test performance")
-    report.append("  • Monitor quality metrics")
-    report.append("")
-    report.append("Month 3: Scale and Optimize")
-    report.append("  • Complete migration")
-    report.append("  • Document best practices")
-    report.append("  • Plan next optimization cycle")
-    report.append("")
-
-    # Risk Assessment
-    report.append("RISK ASSESSMENT")
-    report.append("-" * 40)
-    report.append("Low Risk Actions:")
-    report.append("  • Implement caching")
-    report.append("  • Optimize prompts")
-    report.append("  • Enable batching")
-    report.append("")
-    report.append("Medium Risk Actions:")
-    report.append("  • Switch models for simple tasks")
-    report.append("  • Implement fallback strategies")
-    report.append("  • Migrate non-critical workloads")
-    report.append("")
-    report.append("High Risk Actions:")
-    report.append("  • Complete provider migration")
-    report.append("  • Change core architecture")
-    report.append("  • Modify production workflows")
-    report.append("")
-
-    # Metrics and KPIs
-    report.append("KEY PERFORMANCE INDICATORS")
-    report.append("-" * 40)
-    report.append("• Cost per request")
-    report.append("• Response time (latency)")
-    report.append("• Error rate")
-    report.append("• User satisfaction score")
-    report.append("• Token efficiency")
-    report.append("• Cache hit rate")
-    report.append("")
-
-    # Next Steps
-    report.append("NEXT STEPS")
-    report.append("-" * 40)
-    report.append("1. Review and approve optimization strategy")
-    report.append("2. Allocate resources for implementation")
-    report.append("3. Set up monitoring and tracking")
-    report.append("4. Begin with quick wins")
-    report.append("5. Schedule regular review meetings")
-    report.append("")
-
-    # Footer
-    report.append("=" * 80)
-    report.append("End of Report")
-    report.append(f"Generated by Enterprise AI Cost Optimizer")
-    report.append("=" * 80)
-
-    return "\n".join(report)
+    return rows
 
 
-def export_to_markdown(analysis: Dict[str, Any]) -> str:
-    """Export analysis as markdown format"""
-    md = []
+def _extract_recommendations(analysis: Dict[str, Any]) -> List[List[str]]:
+    """Extract recommendations for CSV export"""
+    rows = []
+    recommendations = analysis.get("recommendations")
 
-    md.append("# Enterprise AI Cost Optimization Report")
-    md.append(f"\n**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    md.append(f"\n**Query:** {analysis.get('query', 'N/A')}\n")
+    if not recommendations:
+        return rows
 
-    # Executive Summary
-    if "recommendations" in analysis:
-        md.append("## Executive Summary\n")
-        for rec in analysis["recommendations"]:
-            md.append(f"- {rec}")
-        md.append("")
+    rows.append(["Recommendations", ""])
+    rows.extend([f"Recommendation {i}", rec] for i, rec in enumerate(recommendations, 1))
 
-    # Add sections based on available analysis
-    if "infrastructure" in analysis.get("analysis", {}):
-        md.append("## Infrastructure Analysis\n")
-        infra = analysis["analysis"]["infrastructure"]
-        md.append(f"- **Current Spend:** ${infra.get('current_spend', 0):,.0f}/month")
-        md.append(f"- **Target Spend:** ${infra.get('target_spend', 0):,.0f}/month")
-        md.append(f"- **Potential Savings:** ${infra.get('potential_savings', 0):,.0f}/month")
-        md.append("")
+    return rows
 
-    return "\n".join(md)
+
+def convert_to_csv(analysis: Dict[str, Any]) -> str:
+    """Convert analysis to CSV format"""
+    try:
+        rows = [
+            ["Analysis Type", analysis.get("intent", "general")],
+            ["Confidence", f"{analysis.get('confidence', 0):.1%}"],
+            ["Generated", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+            ["", ""]  # Empty row
+        ]
+
+        # Add all data sections
+        for extractor in [_extract_cost_data, _extract_roi_data, _extract_recommendations]:
+            rows.extend(extractor(analysis))
+
+        return pd.DataFrame(rows).to_csv(index=False, header=False)
+
+    except Exception as e:
+        st.error(f"Error generating CSV: {e}")
+        return "Error generating CSV data"
+
+
+def _get_cheapest_model(breakdown: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+    """Find the cheapest model from cost breakdown"""
+    return min(
+        breakdown.items(),
+        key=lambda x: x[1].get("monthly_cost", float('inf')) if isinstance(x[1], dict) else float('inf')
+    )
+
+
+def _add_section(parts: List[str], title: str, content: List[str]):
+    """Add a section to summary parts"""
+    parts.extend([
+        f"{title}:",
+        "-" * len(title),
+        *content,
+        ""
+    ])
+
+
+def generate_summary(analysis: Dict[str, Any]) -> str:
+    """Generate a text summary of the analysis"""
+    try:
+        summary_parts = [
+            "AI COST OPTIMIZATION ANALYSIS SUMMARY",
+            "=" * 50,
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Analysis Type: {analysis.get('intent', 'general').title()}",
+            f"Confidence: {analysis.get('confidence', 0):.1%}",
+            ""
+        ]
+
+        # Key recommendations
+        if recommendations := analysis.get("recommendations"):
+            _add_section(summary_parts, "KEY RECOMMENDATIONS",
+                        [f"{i}. {rec}" for i, rec in enumerate(recommendations, 1)])
+
+        analysis_data = analysis.get("analysis", {})
+
+        # Cost analysis
+        if cost_data := analysis_data.get("costs"):
+            content = []
+            if breakdown := cost_data.get("cost_breakdown"):
+                cheapest_model, cheapest_costs = _get_cheapest_model(breakdown)
+                if isinstance(cheapest_costs, dict):
+                    content.extend([
+                        f"Most cost-effective model: {cheapest_model}",
+                        f"Monthly cost: ${cheapest_costs.get('monthly_cost', 0):,.2f}"
+                    ])
+            _add_section(summary_parts, "COST ANALYSIS", content)
+
+        # ROI analysis
+        if roi_data := analysis_data.get("roi"):
+            if metrics := roi_data.get("basic_metrics", {}):
+                content = [
+                    f"ROI: {metrics.get('roi_percentage', 0)}%",
+                    f"Payback: {metrics.get('payback_period_years', 0):.1f} years",
+                    f"Net Benefit: ${metrics.get('net_benefit', 0):,.0f}"
+                ]
+                _add_section(summary_parts, "ROI ANALYSIS", content)
+
+        # Infrastructure savings
+        if infra_data := analysis_data.get("infrastructure"):
+            content = [
+                f"Current spend: ${infra_data.get('current_spend', 0):,.0f}/month",
+                f"Potential savings: ${infra_data.get('potential_savings', 0):,.0f}/month",
+                f"Annual savings: ${infra_data.get('annual_savings', 0):,.0f}"
+            ]
+            _add_section(summary_parts, "INFRASTRUCTURE OPTIMIZATION", content)
+
+        # Next steps
+        _add_section(summary_parts, "NEXT STEPS", [
+            "1. Review detailed analysis in each section",
+            "2. Prioritize recommendations based on your constraints",
+            "3. Begin with quick wins for immediate impact",
+            "4. Plan phased implementation approach",
+            "5. Set up monitoring and measurement systems"
+        ])
+
+        return "\n".join(summary_parts)
+
+    except Exception as e:
+        return f"Error generating summary: {e}"
