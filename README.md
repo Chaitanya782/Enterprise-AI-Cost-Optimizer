@@ -1,6 +1,5 @@
 # 🚀 Enterprise AI Cost Optimizer
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-url.streamlit.app)
 [![Built with Lyzr Studio](https://img.shields.io/badge/Built%20with-Lyzr%20Studio-blue)](https://studio.lyzr.ai/)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -54,7 +53,7 @@ Enterprise AI teams struggle with:
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/yourusername/enterprise-ai-cost-optimizer.git
+git clone https://github.com/Chaitanya782/Enterprise-AI-Cost-Optimizer.git
 cd enterprise-ai-cost-optimizer
 
 # 2. Set up environment
