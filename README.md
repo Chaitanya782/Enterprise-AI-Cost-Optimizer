@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ```markdown
 # 🚀 Enterprise AI Cost Optimizer
 
@@ -140,3 +141,6 @@ MIT – Free to use, modify, and distribute. See [LICENSE](LICENSE).
 *"Optimize smarter. Scale faster."* 🚀
 
 ```
+=======
+# Enterprise-AI-Cost-Optimizer
+>>>>>>> f9a0747c385f0edab76ce2a900232879e49baac0
