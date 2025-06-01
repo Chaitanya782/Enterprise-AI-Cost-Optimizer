@@ -1,146 +1,150 @@
-<<<<<<< HEAD
-```markdown
 # 🚀 Enterprise AI Cost Optimizer
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-url.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://enterprise-ai-cost-optimizer-drpesterasuv.streamlit.app/)
+
 [![Built with Lyzr Studio](https://img.shields.io/badge/Built%20with-Lyzr%20Studio-blue)](https://studio.lyzr.ai/)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An intelligent AI Cost Optimization Advisor that helps enterprises reduce AI infrastructure costs by **30–60%** without compromising performance. Built for the **100xEngineers Generative AI Buildathon 2.0**.
+An intelligent **AI Cost Optimization Advisor** that helps enterprises reduce LLM/API costs by **30–60%**—without sacrificing performance.
+
+> 🏆 Built for the **100xEngineers Generative AI Buildathon 2.0**
 
 ---
 
 ## 🎯 Problem
 
-Enterprise AI teams face:
-- 🚫 High waste in LLM/API spending  
-- ❌ No clarity on provider costs or ROI  
-- 🧩 No roadmap for optimization  
+Enterprise AI teams struggle with:
+- 💸 High spending on LLM/API usage  
+- 📉 Lack of transparency on cost-to-performance  
+- ❓ No strategic roadmap for optimization  
 
-This tool solves that by analyzing your stack and providing instant, actionable insights.
+**This tool analyzes your AI stack and provides instant, actionable cost-saving insights.**
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### 🤖 AI Agents
-- **Task Analyzer**: Detects automation potential
-- **Cost Calculator**: Real-time multi-LLM cost comparison
-- **ROI Estimator**: Forecasts savings & break-even
-- **Orchestrator**: Combines outputs into strategy
+### 🤖 AI-Powered Agents
+- **Task Analyzer** — Identifies automation opportunities  
+- **Cost Calculator** — Compares costs across LLMs (GPT-4, Claude, Gemini, etc.)  
+- **ROI Estimator** — Projects savings and time to break even  
+- **Orchestrator** — Coordinates insights into an optimization roadmap
 
-### 📊 Insights & Reports
-- GPT-4, Claude, Gemini cost comparisons  
-- Task priority matrix and quick wins  
+### 📊 Interactive Insights
+- LLM provider cost comparison  
 - ROI projection timeline  
-- Exportable analysis (CSV, PDF, JSON)
+- Task impact matrix with priority ranking  
+- Exportable reports (CSV, PDF, JSON)
 
 ---
 
-## 🧠 Architecture
+## 🧠 System Architecture
 
-```
-
+```plaintext
 ┌─────────────── Streamlit UI ───────────────┐
 │                                             │
 │  →→→→→→  Lyzr Studio Agent Engine  →→→→→→  │
 │     ┌──────────── Orchestrator ───────────┐ │
 │     │ Task Analyzer  |  Cost Calc  | ROI  │ │
 └─────┴─────────────────────────────────────┘
-
 ````
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
 ```bash
-# Clone & install
-git clone https://github.com/yourusername/enterprise-ai-cost-optimizer.git
+# 1. Clone the repo
+git clone https://github.com/Chaitanya782/Enterprise-AI-Cost-Optimizer.git
 cd enterprise-ai-cost-optimizer
-python -m venv venv && source venv/bin/activate
+
+# 2. Set up environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Configure
-cp .env.example .env  # Fill in API keys
+# 3. Configure
+cp .env.example .env  # Add your API keys
 
-# Run app
+# 4. Launch the app
 streamlit run app/main.py
-````
+```
 
 ---
 
-## 🧪 Example Prompts
+## 🧪 Sample Prompts
 
-* "Analyze our \$50K/month AI spend across OpenAI, AWS, and Azure"
-* "Estimate ROI for automating customer support with a \$100K budget"
-* "Compare GPT-4 vs Claude vs Gemini for our use case"
-* "Suggest optimization roadmap for our current LLM setup"
+* 💬 "Analyze our \$50K/month AI spend across OpenAI, AWS, and Azure"
+* 💬 "Estimate ROI for automating customer support with a \$100K budget"
+* 💬 "Compare GPT-4 vs Claude vs Gemini for our use case"
+* 💬 "Suggest optimization roadmap for our current LLM stack"
 
 ---
 
 ## 📁 Project Structure
 
-```
+```plaintext
 enterprise-ai-cost-optimizer/
 ├── app/
-│   ├── main.py                    # Main Streamlit application
-│   ├── config.py                  # Configuration management
-│   └── components/
-│       ├── chat_ui.py            # Chat interface components
-│       ├── visualizations.py     # Charts and visualizations
-│       └── export.py             # Export functionality
-├── agents/
-│   ├── base_agent.py             # Base agent class
-│   ├── task_analyzer.py          # Task analysis agent
-│   ├── cost_calculator.py        # Cost calculation agent
-│   ├── roi_estimator.py          # ROI estimation agent
-│   └── orchestrator.py           # Multi-agent orchestrator
-├── core/
-│   ├── lyzr_client.py            # Lyzr API v3 client
-│   ├── gemini_client.py          # Gemini client
-│   └── llm_manager.py            # LLM management
+│   ├── main.py                # Streamlit app
+│   ├── config.py              # Environment & settings
+│   └── components/            # UI components
+│       ├── chat_ui.py
+│       ├── visualizations.py
+│       └── export.py
+├── agents/                    # AI agents
+│   ├── base_agent.py
+│   ├── task_analyzer.py
+│   ├── cost_calculator.py
+│   ├── roi_estimator.py
+│   └── orchestrator.py
+├── core/                      # Backend integrations
+│   ├── lyzr_client.py
+│   ├── gemini_client.py
+│   └── llm_manager.py
 ├── utils/
-│   └── logger.py                 # Logging configuration
+│   └── logger.py
 ├── tests/
-│   └── test_agents.py           # Agent testing
-├── requirements.txt              # Python dependencies
-├── .env.example                  # Environment variables template
-└── README.md                     # This file        # This file
+│   └── test_agents.py
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
 ---
 
 ## 🤖 AI Attribution
 
-This project was built with both human and AI assistance.
+This project was built with both human expertise and AI assistance.
 
-* 🤝 Human: System design, business logic, testing, orchestration
-* 🤖 AI Tools:
+**Human:**
 
-  * **Claude 3.5**: Agent logic & system architecture suggestions
-  * **ChatGPT-4**: Documentation, refactoring, test suggestions
+* System design, business logic, orchestration, testing
 
-> All AI-generated content was reviewed, modified, and approved by human developers.
+**AI Tools:**
+
+* **Claude 3.5** — System architecture & agent logic suggestions
+* **ChatGPT-4** — Documentation, code cleanup, test generation
+
+> All AI-generated code was reviewed, validated, and modified by human developers.
 
 ---
 
-## 📞 Support & Contact
+## 📞 Contact & Support
 
-GitHub Issues: Report bugs or request features
-Email: chaitanya.vashisth1@gmail.com
+* 📮 Email: [chaitanya.vashisth1@gmail.com](mailto:chaitanya.vashisth1@gmail.com)
+* 🐞 GitHub Issues: [Submit bug or feature requests](https://github.com/yourusername/enterprise-ai-cost-optimizer/issues)
+
+---
 
 ## 📜 License
 
-MIT – Free to use, modify, and distribute. See [LICENSE](LICENSE).
+MIT License — Free to use, modify, and distribute. See [LICENSE](LICENSE) for details.
 
 ---
 
+### 💡 *"Optimize smarter. Scale faster."*
+
 **Built with ❤️ for the 100xEngineers Generative AI Buildathon 2.0**
 
-*"Optimize smarter. Scale faster."* 🚀
-
 ```
-=======
-# Enterprise-AI-Cost-Optimizer
->>>>>>> f9a0747c385f0edab76ce2a900232879e49baac0
