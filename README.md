@@ -1,7 +1,3 @@
-Here's a **UI-optimized and cleaned-up** version of your `README.md` for better readability, scannability, and professional appeal on GitHub or any project showcase:
-
----
-
 ````markdown
 # 🚀 Enterprise AI Cost Optimizer
 
