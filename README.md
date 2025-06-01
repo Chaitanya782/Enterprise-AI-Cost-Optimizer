@@ -1,5 +1,6 @@
 # 🚀 Enterprise AI Cost Optimizer
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)]([https://your-app-url.streamlit.app](https://enterprise-ai-cost-optimizer-drpesterasuv.streamlit.app/))
 [![Built with Lyzr Studio](https://img.shields.io/badge/Built%20with-Lyzr%20Studio-blue)](https://studio.lyzr.ai/)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
