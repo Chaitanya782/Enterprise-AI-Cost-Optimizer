@@ -12,8 +12,9 @@ def display_message(message: Dict[str, str]):
             from app.components.visualizations import display_enhanced_analysis
             display_enhanced_analysis(message["analysis"])
         else:
-            # Fixed: Use st.markdown without custom CSS to respect theme
-            st.markdown(message["content"])
+            # Fixed: Escape dollar signs to prevent LaTeX rendering issues
+            content = message["content"].replace("$", r"\$")
+            st.markdown(content)
 
 
 def _display_cost_metrics(vm: dict):
@@ -31,7 +32,7 @@ def _display_cost_metrics(vm: dict):
 def _display_cost_breakdown(breakdown: dict):
     """Display cost breakdown table"""
     st.write("**💵 Model Cost Comparison:**")
-
+    
     cost_data_list = [
         {
             "Model": model,
@@ -45,7 +46,7 @@ def _display_cost_breakdown(breakdown: dict):
         for model, costs in breakdown.items()
         if isinstance(costs, dict) and "monthly_cost" in costs
     ]
-
+    
     if cost_data_list:
         st.dataframe(cost_data_list, use_container_width=True)
     else:
@@ -55,10 +56,10 @@ def _display_cost_breakdown(breakdown: dict):
 def _display_roi_metrics(metrics: dict):
     """Display ROI metrics in columns"""
     col1, col2, col3, col4 = st.columns(4)
-
+    
     with col1:
         st.metric("ROI", f"{metrics.get('roi_percentage', 0)}%")
-
+    
     with col2:
         payback = metrics.get("payback_period_years", 0)
         if payback < 2:
@@ -66,10 +67,10 @@ def _display_roi_metrics(metrics: dict):
             st.metric("Payback", f"{payback_months:.1f} months")
         else:
             st.metric("Payback", f"{payback:.1f} years")
-
+    
     with col3:
         st.metric("Net Benefit", f"${metrics.get('net_benefit', 0):,.0f}")
-
+    
     with col4:
         if npv := metrics.get("npv", 0):
             st.metric("NPV", f"${npv:,.0f}")
@@ -78,11 +79,11 @@ def _display_roi_metrics(metrics: dict):
 def _display_extracted_metrics(metrics: dict):
     """Display extracted metrics in organized columns"""
     cols = st.columns(min(3, len(metrics)))
-
+    
     for i, (key, value) in enumerate(metrics.items()):
         with cols[i % 3]:
             key_title = key.replace("_", " ").title()
-
+            
             if isinstance(value, (int, float)):
                 if any(term in key for term in ["spend", "budget", "cost"]):
                     st.metric(key_title, f"${value:,.0f}")
@@ -119,10 +120,10 @@ def display_analysis(analysis: Dict[str, Any]):
             with st.expander("💰 Cost Analysis", expanded=True):
                 if vm := cost_data.get("volume_metrics"):
                     _display_cost_metrics(vm)
-
+                
                 if breakdown := cost_data.get("cost_breakdown"):
                     _display_cost_breakdown(breakdown)
-
+                
                 for key in ["cost_summary", "analysis"]:
                     if content := cost_data.get(key):
                         st.write(f"**{'📊 Cost Summary' if key == 'cost_summary' else '🔍 Detailed Analysis'}:**")
@@ -138,7 +139,7 @@ def display_analysis(analysis: Dict[str, Any]):
                     st.metric("Target Spend", f"${infra_data.get('target_spend', 0):,.0f}/month")
                 with col3:
                     st.metric("Potential Savings", f"${infra_data.get('potential_savings', 0):,.0f}/month")
-
+                
                 if detailed := infra_data.get("detailed_analysis"):
                     st.write("**📋 Optimization Plan:**")
                     st.write(detailed)
@@ -149,8 +150,8 @@ def display_analysis(analysis: Dict[str, Any]):
                 if isinstance(tasks_data, str):
                     st.write(tasks_data)
                 elif isinstance(tasks_data, dict):
-                    content = (tasks_data.get("detailed_analysis") or
-                              tasks_data.get("analysis") or
+                    content = (tasks_data.get("detailed_analysis") or 
+                              tasks_data.get("analysis") or 
                               str(tasks_data))
                     st.write(content)
 
@@ -159,7 +160,7 @@ def display_analysis(analysis: Dict[str, Any]):
             with st.expander("📊 ROI Analysis", expanded=True):
                 if metrics := (roi_data.get("basic_metrics") or roi_data.get("key_metrics")):
                     _display_roi_metrics(metrics)
-
+                
                 if detailed := (roi_data.get("detailed_analysis") or roi_data.get("analysis")):
                     st.write("**🔍 Detailed ROI Analysis:**")
                     st.write(detailed)
@@ -188,7 +189,7 @@ def render_chat_interface(orchestrator):
         # Add user message
         user_msg = {"role": "user", "content": prompt}
         st.session_state.messages.append(user_msg)
-
+        
         # Display user message (fixed: removed custom CSS)
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -227,12 +228,12 @@ def render_chat_interface(orchestrator):
                 except Exception as e:
                     error_msg = f"❌ Analysis Error: {str(e)}"
                     st.error(error_msg)
-
+                    
                     with st.expander("🔍 Error Details"):
                         st.code(traceback.format_exc())
-
+                    
                     st.session_state.messages.append({
-                        "role": "assistant",
+                        "role": "assistant", 
                         "content": error_msg
                     })
 
