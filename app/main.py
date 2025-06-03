@@ -36,7 +36,9 @@ def initialize_session_state():
         'total_cost': 0.0,
         'orchestrator': None,
         'session_id': None,
-        'initialization_error': None
+        'initialization_error': None,
+        'process_example_query': False,  # Flag to trigger example query processing
+        'pending_query': None  # Store the pending query
     }
 
     for key, value in defaults.items():
@@ -104,7 +106,11 @@ def render_sidebar():
 
         for i, (label, query) in enumerate(zip(example_labels, get_example_queries())):
             if st.button(label, key=f"example_{i}", help=f"Click to ask: {query[:100]}..."):
+                # Add user message
                 st.session_state.messages.append({"role": "user", "content": query})
+                # Set flags to trigger processing
+                st.session_state.process_example_query = True
+                st.session_state.pending_query = query
                 st.rerun()
 
         st.divider()
@@ -115,6 +121,8 @@ def render_sidebar():
             if st.button("🗑️ Clear Chat") and st.session_state.messages:
                 st.session_state.messages.clear()
                 st.session_state.total_cost = 0.0
+                st.session_state.process_example_query = False
+                st.session_state.pending_query = None
                 st.rerun()
 
         with col2:
@@ -212,6 +220,32 @@ def render_configuration_help():
         """)
 
 
+def process_example_query_if_needed(orchestrator):
+    """Process example query if flagged"""
+    if st.session_state.get('process_example_query', False) and st.session_state.get('pending_query'):
+        # Reset the flags
+        st.session_state.process_example_query = False
+        query = st.session_state.pending_query
+        st.session_state.pending_query = None
+        
+        # Process the query automatically
+        with st.chat_message("assistant"):
+            with st.spinner("🤔 Analyzing your request..."):
+                try:
+                    response = orchestrator.process_query(query)
+                    st.write(response)
+                    # Add assistant response to messages
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    # Update cost if available
+                    if hasattr(orchestrator, 'get_session_cost'):
+                        st.session_state.total_cost += orchestrator.get_session_cost()
+                except Exception as e:
+                    error_msg = f"Sorry, I encountered an error: {str(e)}"
+                    st.error(error_msg)
+                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                    logger.error(f"Error processing example query: {e}", exc_info=True)
+
+
 def main():
     """Optimized main application entry point"""
     # Page configuration
@@ -275,6 +309,8 @@ def main():
 
     # Chat interface
     if st.session_state.orchestrator:
+        # Process example query if needed (before rendering chat)
+        process_example_query_if_needed(st.session_state.orchestrator)
         render_chat_interface(st.session_state.orchestrator)
     else:
         st.warning("🔄 Please fix the configuration issues above to start using the assistant.")
