@@ -90,17 +90,17 @@ def render_sidebar():
 
         st.divider()
 
-        # Example queries
-        st.subheader("💡 Try These Examples")
+        # # Example queries
+        # st.subheader("💡 Try These Examples, please select and paste.")
 
-        example_labels = [
-            "💰 Infrastructure Cost Optimization ($85K/month)",
-            "📊 LLM Cost Comparison Analysis",
-            "✍️ Content Generation ROI Analysis",
-            "📄 Document Processing Automation",
-            "🎧 Customer Service Workflow Analysis",
-            "🤖 Cost-Effective LLM Selection"
-        ]
+        # example_labels = [
+        #     "💰 Infrastructure Cost Optimization ($85K/month)",
+        #     "📊 LLM Cost Comparison Analysis",
+        #     "✍️ Content Generation ROI Analysis",
+        #     "📄 Document Processing Automation",
+        #     "🎧 Customer Service Workflow Analysis",
+        #     "🤖 Cost-Effective LLM Selection"
+        # ]
 
         for i, (label, query) in enumerate(zip(example_labels, get_example_queries())):
             if st.button(label, key=f"example_{i}", help=f"Click to ask: {query[:100]}..."):
