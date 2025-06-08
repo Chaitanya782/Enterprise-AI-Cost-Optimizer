@@ -282,7 +282,7 @@ Provide SPECIFIC analysis with:
                 monthly_cost = data.get("monthly_cost", 0)
                 cost_per_request = data.get("cost_per_request", 0)
                 volume_discount = data.get("volume_discount", 0)
-                
+
                 discount_text = f" ({volume_discount}% volume discount)" if volume_discount > 0 else ""
                 summary += f"• {model} ({provider} - {tier}): ${monthly_cost:,.2f}/month (${cost_per_request:.4f}/request){discount_text}\n"
 
