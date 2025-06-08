@@ -1,5 +1,5 @@
 """
-Enhanced data visualization components with better error handling
+Enhanced data visualization components with integrated export functionality
 """
 import streamlit as st
 import plotly.graph_objects as go
@@ -219,9 +219,6 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
         tab_data.append(("📋 Task Analysis", "tasks", tasks_data, None))
     if analysis.get("recommendations"):
         tab_data.append(("🎯 Recommendations", "recommendations", analysis.get("recommendations"), None))
-    
-    # Always add export tab
-    tab_data.append(("📥 Export", "export", analysis, None))
 
     if tab_data:
         tab_names, section_keys, primary_data, secondary_data = zip(*tab_data)
@@ -237,9 +234,14 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
                     render_task_analysis_section(primary)
                 elif section_key == "recommendations":
                     render_recommendations_section(primary, analysis)
-                elif section_key == "export":
-                    from app.components.export import add_export_buttons
-                    add_export_buttons(primary)
+
+    # Export section at the bottom - INTEGRATED
+    st.divider()
+    st.markdown("### 📥 Export Analysis Results")
+    
+    # Import and use the comprehensive export functionality
+    from app.components.export import add_export_buttons
+    add_export_buttons(analysis)
 
 
 def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str, Any]):
