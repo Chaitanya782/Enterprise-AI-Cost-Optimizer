@@ -19,7 +19,7 @@ def clean_text_for_display(text: str) -> str:
     """FIXED: Clean text to prevent LaTeX and formatting issues"""
     if not isinstance(text, str):
         text = str(text)
-    
+
     # Remove all problematic formatting that causes LaTeX issues
     text = text.replace("$", "\\$")      # Escape dollar signs
     text = text.replace("**", "")        # Remove bold markdown
@@ -32,7 +32,7 @@ def clean_text_for_display(text: str) -> str:
     text = text.replace("}", "\\}")      # Escape braces
     text = text.replace("\\n", " ")      # Replace newlines with spaces
     text = text.replace("\\r", " ")      # Replace carriage returns
-    
+
     return text
 
 
@@ -167,9 +167,9 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
         # Add break-even line
         if 0 < payback_years <= 5:
             fig.add_vline(
-                x=payback_years, 
-                line_width=3, 
-                line_dash="dash", 
+                x=payback_years,
+                line_width=3,
+                line_dash="dash",
                 line_color="#f39c12",
                 annotation_text=f"Break-even: {payback_years:.1f}y",
                 annotation_position="top"
@@ -186,9 +186,9 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
             height=500,
             hovermode='x unified',
             legend=dict(
-                yanchor="top", 
-                y=0.99, 
-                xanchor="left", 
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
                 x=0.01,
                 bgcolor="rgba(255,255,255,0.8)",
                 bordercolor="rgba(0,0,0,0.2)",
@@ -209,7 +209,7 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
 
 def display_enhanced_analysis(analysis: Dict[str, Any]):
     """Enhanced analysis display with improved design"""
-    
+
     # Compact executive summary with cards
     st.markdown("### 📊 Executive Summary")
 
@@ -322,7 +322,7 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
     # Export section at the bottom - INTEGRATED
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### 📥 Export Analysis Results")
-    
+
     # Import and use the comprehensive export functionality
     from app.components.export import add_export_buttons
     add_export_buttons(analysis)
@@ -334,7 +334,7 @@ def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str
     if infra_data:
         st.markdown("#### 🏗️ Infrastructure Cost Optimization")
         col1, col2, col3, col4 = st.columns(4)
-        
+
         metrics = [
             ("Current Spend", infra_data.get('current_spend', 0), "/mo"),
             ("Target Spend", infra_data.get('target_spend', 0), "/mo"),
