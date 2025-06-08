@@ -1,12 +1,11 @@
 """
-FIXED main Streamlit application with auto-submit examples and improved UI
+Enhanced main Streamlit application with fixed UI issues
 """
 import streamlit as st
 from pathlib import Path
 import sys
 from functools import lru_cache
 import traceback
-from datetime import datetime
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -39,7 +38,7 @@ def initialize_session_state():
         'session_id': None,
         'initialization_error': None,
         'show_debug': False,
-        'pending_query': None  # FIXED: For auto-submitting example queries
+        'pending_query': None  # For auto-submitting example queries
     }
 
     for key, value in defaults.items():
@@ -88,7 +87,7 @@ def render_sidebar():
 
         st.divider()
 
-        # FIXED: Example queries with auto-submit
+        # Example queries - FIXED: Auto-submit when clicked
         st.markdown("### 💡 Example Queries")
         example_labels = [
             "💰 Infrastructure Cost Optimization",
@@ -253,7 +252,7 @@ def render_configuration_help():
 
 
 def process_pending_query(orchestrator):
-    """FIXED: Process any pending query from example buttons"""
+    """Process any pending query from example buttons"""
     if st.session_state.get("pending_query") and orchestrator:
         query = st.session_state.pending_query
         st.session_state.pending_query = None  # Clear the pending query
@@ -303,7 +302,7 @@ def main():
         initial_sidebar_state="expanded"
     )
 
-    # FIXED: Enhanced CSS for better UI without problematic formatting
+    # Enhanced CSS for better UI
     st.markdown("""
     <style>
     /* Main container improvements */
@@ -322,6 +321,20 @@ def main():
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+    }
+    
+    .main h2 {
+        font-size: 1.8rem !important;
+        font-weight: 600 !important;
+        margin-top: 2rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .main h3 {
+        font-size: 1.4rem !important;
+        font-weight: 600 !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.8rem !important;
     }
     
     /* Chat message improvements */
@@ -345,6 +358,24 @@ def main():
         box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
     }
     
+    /* Sidebar improvements */
+    .css-1d391kg {
+        padding-top: 2rem !important;
+    }
+    
+    /* Form improvements */
+    .stSelectbox > div > div {
+        border-radius: 8px !important;
+    }
+    
+    .stTextInput > div > div > input {
+        border-radius: 8px !important;
+    }
+    
+    .stTextArea > div > div > textarea {
+        border-radius: 8px !important;
+    }
+    
     /* Metric improvements */
     .metric-container {
         background: white;
@@ -352,6 +383,46 @@ def main():
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         margin-bottom: 1rem;
+    }
+    
+    /* Tab improvements */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    
+    /* Expander improvements */
+    .streamlit-expanderHeader {
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Remove excessive spacing */
+    .element-container {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Improve spacing between sections */
+    .stMarkdown {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Better column spacing */
+    .row-widget.stHorizontal {
+        gap: 1rem;
+    }
+    
+    /* Improve divider styling */
+    hr {
+        margin: 2rem 0 !important;
+        border: none !important;
+        height: 1px !important;
+        background: linear-gradient(90deg, transparent, #e5e7eb, transparent) !important;
     }
     </style>
     """, unsafe_allow_html=True)
