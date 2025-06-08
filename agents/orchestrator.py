@@ -1,4 +1,4 @@
-"""Enhanced Multi-Agent Orchestrator with Rate Limiting and Chat Context Memory"""
+"""Enhanced Multi-Agent Orchestrator with FIXED intent classification and context memory"""
 from typing import Dict, Any, Optional, List, Tuple
 import re
 import time
@@ -57,21 +57,22 @@ class RateLimiter:
             self.last_call_time = current_time
 
 class Orchestrator:
-    """Enhanced Orchestrator with rate limiting and conversation context memory"""
+    """Enhanced Orchestrator with FIXED intent classification and conversation context memory"""
 
-    # ENHANCED INTENT KEYWORDS with stronger triggers
+    # FIXED: Enhanced intent keywords with stronger triggers for comprehensive analysis
     INTENT_KEYWORDS_ENHANCED = {
         "cost_analysis": {
             # High priority cost terms (weight 5x) - ENHANCED
             "high_priority": [
                 "cost analysis", "cost comparison", "compare costs", "llm costs", "api costs",
                 "pricing analysis", "cost breakdown", "monthly cost", "annual cost",
-                "cost optimization", "reduce costs", "save money", "budget analysis"
+                "cost optimization", "reduce costs", "save money", "budget analysis",
+                "spending", "infrastructure cost", "provider comparison"
             ],
             # Medium priority cost terms (weight 3x)
             "medium_priority": [
                 "cost", "price", "pricing", "budget", "expensive", "cheap", "spend", "fee",
-                "compare llm", "provider comparison", "usage cost", "token cost"
+                "compare llm", "usage cost", "token cost", "monthly spend"
             ],
             # Context cost terms (weight 1x)
             "context": ["gpt-4 cost", "claude cost", "gemini cost", "openai pricing"]
@@ -81,7 +82,8 @@ class Orchestrator:
             "high_priority": [
                 "roi analysis", "return on investment", "calculate roi", "roi calculation",
                 "payback period", "break even", "investment return", "business case",
-                "cost benefit analysis", "financial return", "profit analysis"
+                "cost benefit analysis", "financial return", "profit analysis",
+                "roi for", "investment", "200k investment"
             ],
             # Medium priority ROI terms (weight 3x)
             "medium_priority": [
@@ -96,12 +98,14 @@ class Orchestrator:
             "high_priority": [
                 "task analysis", "workflow analysis", "automation opportunities", 
                 "process automation", "automate workflow", "streamline process",
-                "task automation", "workflow optimization", "process improvement"
+                "task automation", "workflow optimization", "process improvement",
+                "automate processes", "support team", "handles tickets", "manual processes"
             ],
             # Medium priority task terms (weight 3x)
             "medium_priority": [
                 "automate", "workflow", "process", "streamline", "optimize", "task",
-                "implement", "ai for", "replace", "manual", "repetitive", "efficiency"
+                "implement", "ai for", "replace", "manual", "repetitive", "efficiency",
+                "team", "handles", "tickets", "daily"
             ],
             # Context task terms (weight 1x)
             "context": ["automation", "digitize", "transform", "productivity"]
@@ -126,13 +130,14 @@ class Orchestrator:
         "automation": ["automate", "workflow", "process", "streamline", "efficiency"]
     }
 
-    # ENHANCED FINANCIAL PATTERNS - FIXED
+    # FIXED: Enhanced financial patterns with proper multiplier handling
     FINANCIAL_PATTERNS = [
         r'spending\s*\$(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)',
         r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:dollars?|usd)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)?',
         r'budget\s*(?:of|is)?\s*\$?(\d+(?:,\d{3})*(?:\.\d+)?)([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)?',
         r'\$(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)',
-        r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)'
+        r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)',
+        r'investment\s*(?:of|is)?\s*\$?(\d+(?:,\d{3})*(?:\.\d+)?)([kmb])?'
     ]
 
     PERCENT_PATTERNS = [
@@ -146,7 +151,9 @@ class Orchestrator:
             r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*(?:per\s*day|daily)',
             r'(\d+(?:,\d{3})*)\s*daily\s*(?:requests?|calls?|queries?|tickets?|messages?)',
             r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*a\s*day',
-            r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*each\s*day'
+            r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*each\s*day',
+            r'handles\s*(\d+(?:,\d{3})*)\s*(?:tickets?|requests?|calls?)\s*daily',
+            r'(\d+(?:,\d{3})*)\s*(?:tickets?|requests?|calls?)\s*daily'
         ],
         'monthly_requests': [
             r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*(?:per\s*month|monthly)',
@@ -156,12 +163,15 @@ class Orchestrator:
         'users': [
             r'(\d+(?:,\d{3})*)\s*(?:users?|customers?|employees?|agents?|staff)',
             r'team\s*of\s*(\d+(?:,\d{3})*)',
-            r'(\d+(?:,\d{3})*)\s*people'
+            r'(\d+(?:,\d{3})*)\s*people',
+            r'support\s*team\s*of\s*(\d+(?:,\d{3})*)'
         ],
         'hours_saved': [
             r'save\s*(\d+(?:,\d{3})*)\s*hours?',
             r'(\d+(?:,\d{3})*)\s*hours?\s*(?:saved|reduction|per\s*week)',
-            r'reduce\s*(?:by\s*)?(\d+(?:,\d{3})*)\s*hours?'
+            r'reduce\s*(?:by\s*)?(\d+(?:,\d{3})*)\s*hours?',
+            r'(\d+(?:,\d{3})*)\s*min\s*each',
+            r'(\d+(?:,\d{3})*)\s*minutes?\s*(?:per|each)'
         ]
     }
 
@@ -205,7 +215,7 @@ class Orchestrator:
         logger.info("Enhanced Orchestrator initialized with rate limiting")
 
     def _classify_intent(self, user_query: str, session_id: str = None) -> Tuple[str, float]:
-        """ENHANCED intent classification with stronger keyword matching"""
+        """FIXED: Enhanced intent classification that triggers comprehensive analysis for complex queries"""
         
         # Check session context first for continuation
         if session_id and self.session_manager.get_locked_use_case(session_id):
@@ -243,51 +253,39 @@ class Orchestrator:
 
             weighted_scores[intent] = score
 
-        # ENHANCED special case detection
-        cost_terms = ["cost", "price", "pricing", "budget", "expensive", "cheap", "compare"]
-        roi_terms = ["roi", "return", "investment", "payback", "benefit", "calculate roi"]
-        task_terms = ["automate", "task", "workflow", "process", "analyze workflow"]
-        model_names = ["gpt-4", "gpt-3.5", "claude", "gemini", "llama"]
-
-        has_cost_term = any(term in query_lower for term in cost_terms)
-        has_roi_term = any(term in query_lower for term in roi_terms)
-        has_task_term = any(term in query_lower for term in task_terms)
-        has_model_name = any(model in query_lower for model in model_names)
-
-        # Strong boost for specific combinations
-        if has_cost_term and has_model_name:
-            weighted_scores["cost_analysis"] += 10  # Very strong boost
+        # FIXED: Special detection for comprehensive analysis triggers
+        cost_indicators = ["spending", "cost", "budget", "monthly", "infrastructure"]
+        roi_indicators = ["roi", "investment", "return", "payback"]
+        task_indicators = ["team", "handles", "tickets", "automate", "processes"]
         
-        if "roi" in query_lower or "return on investment" in query_lower:
-            weighted_scores["roi_analysis"] += 10  # Very strong boost
-            
-        if "task analysis" in query_lower or "workflow analysis" in query_lower:
-            weighted_scores["task_analysis"] += 10  # Very strong boost
-
-        # Calculate result
-        total_score = sum(weighted_scores.values())
-        if total_score == 0:
-            result = ("general", 0.0)
+        has_cost = sum(1 for term in cost_indicators if term in query_lower)
+        has_roi = sum(1 for term in roi_indicators if term in query_lower)
+        has_task = sum(1 for term in task_indicators if term in query_lower)
+        
+        # FIXED: Trigger comprehensive analysis for complex queries
+        total_indicators = has_cost + has_roi + has_task
+        
+        # If query has multiple types of indicators, it should be comprehensive
+        if total_indicators >= 4:  # Strong comprehensive signal
+            logger.info(f"Comprehensive analysis triggered: {total_indicators} indicators found")
+            result = ("comprehensive", 0.9)
         else:
-            max_intent = max(weighted_scores.items(), key=lambda x: x[1])
-            confidence = max_intent[1] / total_score
+            # Calculate result normally
+            total_score = sum(weighted_scores.values())
+            if total_score == 0:
+                result = ("general", 0.0)
+            else:
+                max_intent = max(weighted_scores.items(), key=lambda x: x[1])
+                confidence = max_intent[1] / total_score
 
-            # ENHANCED confidence threshold and comprehensive detection
-            active_intents = [intent for intent, score in weighted_scores.items() if score > 0]
-            
-            # Only trigger comprehensive if multiple intents AND no clear winner
-            if len(active_intents) > 1 and confidence < 0.6:
-                # Check for explicit comprehensive indicators
-                comprehensive_indicators = ["complete analysis", "full analysis", "comprehensive", "everything"]
-                has_comprehensive_intent = any(indicator in query_lower for indicator in comprehensive_indicators)
+                # ENHANCED: Lower threshold for comprehensive analysis
+                active_intents = [intent for intent, score in weighted_scores.items() if score > 0]
                 
-                if has_comprehensive_intent:
+                # Trigger comprehensive if multiple intents with decent scores
+                if len(active_intents) >= 2 and confidence < 0.7:
                     result = ("comprehensive", confidence)
                 else:
-                    # Stick with the highest scoring intent even if confidence is lower
                     result = (max_intent[0], confidence)
-            else:
-                result = (max_intent[0], confidence)
 
         # Cache and return
         with self._cache_lock:
@@ -297,7 +295,7 @@ class Orchestrator:
         return result
 
     def _extract_financial_metrics(self, query: str, contextual_defaults: dict = None) -> dict:
-        """FIXED financial data extraction with proper multiplier handling"""
+        """FIXED: Financial data extraction with proper multiplier handling"""
         metrics = {}
         query_lower = query.lower()
         multipliers = {'k': 1000, 'm': 1000000, 'b': 1000000000}
@@ -338,6 +336,9 @@ class Orchestrator:
                 elif any(term in context for term in ['year', 'annual', 'yearly']):
                     metrics.update({'annual_spend': amount, 'monthly_spend': amount / 12})
                     logger.debug(f"  Set as annual spend: ${amount:,.2f}")
+                elif 'investment' in context:
+                    metrics['investment_budget'] = amount
+                    logger.debug(f"  Set as investment budget: ${amount:,.2f}")
                 else:
                     metrics['budget'] = amount
                     logger.debug(f"  Set as budget: ${amount:,.2f}")
@@ -372,7 +373,14 @@ class Orchestrator:
             for pattern in patterns:
                 matches = re.findall(pattern, query_lower)
                 if matches:
-                    metrics[metric] = float(matches[0].replace(',', ''))
+                    value = float(matches[0].replace(',', ''))
+                    
+                    # FIXED: Handle time conversions for minutes
+                    if metric == 'hours_saved' and ('min' in pattern or 'minutes' in pattern):
+                        # Convert minutes to hours
+                        value = value / 60
+                    
+                    metrics[metric] = value
                     break
 
         # Calculate derived metrics
@@ -461,7 +469,7 @@ class Orchestrator:
         return determined_use_case
 
     def _enhance_query_with_context(self, query: str, session_id: str) -> str:
-        """ENHANCED: Add relevant context from conversation history to the query"""
+        """FIXED: Add relevant context from conversation history to the query"""
         try:
             # Get recent conversation history
             history = self.session_manager.get_session_history(session_id, limit=5)
@@ -482,7 +490,7 @@ class Orchestrator:
             query_lower = query.lower()
             
             # If current query mentions changing numbers, add previous context
-            if any(word in query_lower for word in ['reduce', 'increase', 'change', 'what if', 'instead']):
+            if any(word in query_lower for word in ['reduce', 'increase', 'change', 'what if', 'instead', 'now']):
                 if latest_metrics:
                     context_parts.append("Context from previous conversation:")
                     for key, value in latest_metrics.items():
@@ -531,7 +539,7 @@ class Orchestrator:
 
     def analyze_request(self, user_query: str, session_id: Optional[str] = None,
                        user_id: Optional[str] = None) -> Dict[str, Any]:
-        """Enhanced request analysis with rate limiting and conversation context memory"""
+        """FIXED: Enhanced request analysis that properly triggers comprehensive analysis"""
         # Generate session ID if not provided
         if not session_id:
             session_id = f"orch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -589,7 +597,7 @@ class Orchestrator:
         }
 
         try:
-            # Perform analysis based on intent with rate limiting
+            # FIXED: Perform analysis based on intent - comprehensive analysis triggers ALL THREE
             if intent == "cost_analysis":
                 logger.info("Starting cost analysis...")
                 results["analysis"]["costs"] = self._safe_api_call(
@@ -609,24 +617,20 @@ class Orchestrator:
                 )
 
             elif intent == "comprehensive":
-                logger.info("Starting comprehensive analysis...")
+                logger.info("Starting comprehensive analysis - ALL THREE ANALYSES...")
 
-                # Always do task analysis for comprehensive (it's the base analysis)
+                # FIXED: Always do ALL THREE analyses for comprehensive
                 results["analysis"]["tasks"] = self._safe_api_call(
                     self._get_task_analysis, enhanced_query, context_analysis
                 )
 
-                # Add cost analysis if we have any metrics or providers
-                if financial_metrics or usage_metrics or providers:
-                    results["analysis"]["costs"] = self._safe_api_call(
-                        self._get_cost_analysis, enhanced_query, all_metrics, providers, use_case, contextual_defaults
-                    )
+                results["analysis"]["costs"] = self._safe_api_call(
+                    self._get_cost_analysis, enhanced_query, all_metrics, providers, use_case, contextual_defaults
+                )
 
-                # Add ROI analysis if we have sufficient financial data
-                if financial_metrics and (usage_metrics or 'budget' in financial_metrics):
-                    results["analysis"]["roi"] = self._safe_api_call(
-                        self._get_roi_analysis, all_metrics, use_case, contextual_defaults
-                    )
+                results["analysis"]["roi"] = self._safe_api_call(
+                    self._get_roi_analysis, all_metrics, use_case, contextual_defaults
+                )
 
             else:  # general intent
                 logger.info("Starting general task analysis...")
@@ -753,7 +757,7 @@ class Orchestrator:
     def _get_roi_analysis(self, metrics: Dict, use_case: str, contextual_defaults: Dict[str, Any] = None) -> Dict:
         """Enhanced ROI analysis with rate limiting protection"""
         # Determine budget with context awareness
-        budget = metrics.get('budget', metrics.get('monthly_spend', 10000))
+        budget = metrics.get('budget', metrics.get('investment_budget', metrics.get('monthly_spend', 10000)))
         if 'monthly_spend' in metrics:
             budget = metrics['monthly_spend'] * 12
         elif contextual_defaults and 'suggested_budget' in contextual_defaults:

@@ -1,5 +1,5 @@
 """
-Fixed Chat UI components with proper form handling and text formatting
+FIXED Chat UI components with proper text formatting and message display
 """
 import streamlit as st
 from typing import Dict, Any
@@ -13,28 +13,6 @@ def display_message(message: Dict[str, str]):
         if message["role"] == "assistant" and "analysis" in message:
             from app.components.visualizations import display_enhanced_analysis
             display_enhanced_analysis(message["analysis"])
-        elif message["role"] == "user" and message.get("form_data"):
-            # Display form data summary
-            st.markdown("**📋 Structured Analysis Request**")
-            form_data = message["form_data"]
-            
-            # Show key form details in a clean format
-            basic = form_data.get("basic_info", {})
-            current = form_data.get("current_state", {})
-            goals = form_data.get("goals", {})
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.info(f"**Company:** {basic.get('company_size', 'Unknown')}")
-                st.info(f"**Industry:** {basic.get('industry', 'Unknown')}")
-            with col2:
-                st.info(f"**Use Case:** {basic.get('use_case', 'Unknown')}")
-                if current.get('current_spend', 0) > 0:
-                    st.info(f"**Monthly Spend:** ${current['current_spend']:,}")
-            with col3:
-                st.info(f"**Team Size:** {current.get('team_size', 0)} people")
-                if goals.get('target_savings', 0) > 0:
-                    st.info(f"**Target Savings:** {goals['target_savings']}%")
         else:
             # FIXED: Properly clean content to prevent LaTeX and formatting issues
             content = message["content"]
@@ -54,25 +32,11 @@ def display_message(message: Dict[str, str]):
 def render_chat_interface(orchestrator):
     """FIXED: Render the main chat interface with proper message display order"""
     
-    # ALWAYS display chat history FIRST (before any form interface)
-    if st.session_state.messages:
-        st.markdown("### 💬 Analysis History")
-        for message in st.session_state.messages:
-            display_message(message)
-        st.markdown("---")
-    
-    # Import and render form interface AFTER showing previous messages
-    from app.components.form_ui import render_form_interface
-    
-    # Check if user wants to use form interface
-    use_chat = render_form_interface(orchestrator)
-    
-    if not use_chat:
-        return  # Form interface is being used, don't show chat input
+    # Display chat history
+    for message in st.session_state.messages:
+        display_message(message)
     
     # Chat input section
-    st.markdown("### 💬 Continue Conversation")
-    
     if prompt := st.chat_input("Describe your AI use case, costs, or automation needs..."):
         # Add user message
         user_msg = {"role": "user", "content": prompt}

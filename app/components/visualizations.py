@@ -1,5 +1,5 @@
 """
-Enhanced data visualization components with improved spacing and design
+FIXED data visualization components with proper text cleaning
 """
 import streamlit as st
 import plotly.graph_objects as go
