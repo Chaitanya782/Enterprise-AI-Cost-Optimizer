@@ -52,17 +52,16 @@ def display_message(message: Dict[str, str]):
 
 
 def render_chat_interface(orchestrator):
-    """Render the main chat interface with form option"""
-    # FIXED: Always show previous operations first, then form interface
+    """FIXED: Render the main chat interface with proper message display order"""
     
-    # Display chat history FIRST (before form interface)
+    # ALWAYS display chat history FIRST (before any form interface)
     if st.session_state.messages:
-        st.markdown("### 💬 Previous Conversations")
+        st.markdown("### 💬 Analysis History")
         for message in st.session_state.messages:
             display_message(message)
         st.markdown("---")
     
-    # Import and render form interface
+    # Import and render form interface AFTER showing previous messages
     from app.components.form_ui import render_form_interface
     
     # Check if user wants to use form interface

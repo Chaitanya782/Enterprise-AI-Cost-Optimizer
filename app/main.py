@@ -1,5 +1,5 @@
 """
-Enhanced main Streamlit application with improved UI design
+Enhanced main Streamlit application with fixed UI issues
 """
 import streamlit as st
 from pathlib import Path
@@ -37,7 +37,8 @@ def initialize_session_state():
         'orchestrator': None,
         'session_id': None,
         'initialization_error': None,
-        'show_debug': False
+        'show_debug': False,
+        'pending_query': None  # For auto-submitting example queries
     }
 
     for key, value in defaults.items():
@@ -86,7 +87,7 @@ def render_sidebar():
 
         st.divider()
 
-        # Example queries
+        # Example queries - FIXED: Auto-submit when clicked
         st.markdown("### 💡 Example Queries")
         example_labels = [
             "💰 Infrastructure Cost Optimization",
@@ -99,7 +100,8 @@ def render_sidebar():
 
         for i, (label, query) in enumerate(zip(example_labels, get_example_queries())):
             if st.button(label, key=f"example_{i}", help=f"Click to ask: {query[:100]}...", use_container_width=True):
-                st.session_state.messages.append({"role": "user", "content": query})
+                # FIXED: Set pending query to be processed
+                st.session_state.pending_query = query
                 st.rerun()
 
         st.divider()
@@ -247,6 +249,47 @@ def render_configuration_help():
         3. **Check network connection** - Ensure you can access external APIs
         4. **Try refreshing** - Click "Reset App" in the sidebar
         """)
+
+
+def process_pending_query(orchestrator):
+    """Process any pending query from example buttons"""
+    if st.session_state.get("pending_query") and orchestrator:
+        query = st.session_state.pending_query
+        st.session_state.pending_query = None  # Clear the pending query
+        
+        # Add user message
+        user_msg = {"role": "user", "content": query}
+        st.session_state.messages.append(user_msg)
+        
+        # Process the query
+        try:
+            if "session_id" not in st.session_state:
+                st.session_state.session_id = f"web_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            with st.spinner("🤖 Analyzing your request..."):
+                response = orchestrator.analyze_request(query, session_id=st.session_state.session_id)
+
+                if not isinstance(response, dict):
+                    raise ValueError(f"Expected dict response, got {type(response)}")
+
+                # Add assistant message
+                assistant_msg = {
+                    "role": "assistant",
+                    "content": "Here's my comprehensive analysis:",
+                    "analysis": response
+                }
+                st.session_state.messages.append(assistant_msg)
+                st.session_state.total_cost += 0.01
+
+        except Exception as e:
+            error_msg = f"Analysis Error: {str(e)}"
+            st.error(error_msg)
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": error_msg
+            })
+        
+        st.rerun()
 
 
 def main():
@@ -416,6 +459,10 @@ def main():
         return
 
     render_sidebar()
+
+    # FIXED: Process pending query from example buttons BEFORE showing interface
+    if st.session_state.get("pending_query"):
+        process_pending_query(st.session_state.orchestrator)
 
     # Main content with better spacing
     if not st.session_state.messages:
