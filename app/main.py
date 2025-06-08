@@ -52,7 +52,7 @@ def render_sidebar():
     """Render optimized sidebar with status and controls"""
     with st.sidebar:
         st.markdown("## 🔧 Configuration")
-        
+
         # Connection Status
         st.markdown("### 🔌 Connection Status")
         services = [
@@ -104,7 +104,7 @@ def render_sidebar():
             if st.button(label, key=f"example_{i}", help=f"Click to ask: {query[:100]}...", use_container_width=True):
                 # FIXED: Directly add to messages and process
                 st.session_state.messages.append({"role": "user", "content": query})
-                
+
                 # Process immediately if orchestrator is available
                 if st.session_state.orchestrator:
                     try:
@@ -120,14 +120,14 @@ def render_sidebar():
                         }
                         st.session_state.messages.append(assistant_msg)
                         st.session_state.total_cost += 0.01
-                        
+
                     except Exception as e:
                         error_msg = f"Analysis Error: {str(e)}"
                         st.session_state.messages.append({
-                            "role": "assistant", 
+                            "role": "assistant",
                             "content": error_msg
                         })
-                
+
                 st.rerun()
 
         st.divider()
@@ -166,9 +166,9 @@ def render_welcome_screen():
 
     # Capabilities section with cards
     st.markdown("### 🎯 What I Can Help You With")
-    
+
     col1, col2 = st.columns(2, gap="large")
-    
+
     with col1:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
@@ -179,7 +179,7 @@ def render_welcome_screen():
             </p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         st.markdown("""
         <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
                     padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
@@ -189,7 +189,7 @@ def render_welcome_screen():
             </p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     with col2:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
@@ -200,7 +200,7 @@ def render_welcome_screen():
             </p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         st.markdown("""
         <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); 
                     padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
@@ -215,7 +215,7 @@ def render_welcome_screen():
 
     # Use cases section
     st.markdown("### 🔥 Popular Use Cases")
-    
+
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
