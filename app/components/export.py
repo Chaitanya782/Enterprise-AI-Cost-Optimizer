@@ -37,11 +37,11 @@ def safe_convert_to_csv(analysis: Dict[str, Any]) -> str:
 
         # Add ALL analysis sections
         analysis_data = analysis.get("analysis", {})
-        
+
         # Cost analysis section
         if cost_data := analysis_data.get("costs"):
             rows.append(["COST ANALYSIS", ""])
-            
+
             # Volume metrics
             if vm := cost_data.get("volume_metrics"):
                 rows.append(["Volume Metrics", ""])
@@ -50,7 +50,7 @@ def safe_convert_to_csv(analysis: Dict[str, Any]) -> str:
                 rows.append(["Input Tokens", f"{vm.get('avg_input_tokens', 0):,}"])
                 rows.append(["Output Tokens", f"{vm.get('avg_output_tokens', 0):,}"])
                 rows.append(["", ""])
-            
+
             # Cost breakdown
             if breakdown := cost_data.get("cost_breakdown"):
                 rows.append(["Model Cost Comparison", ""])
@@ -66,7 +66,7 @@ def safe_convert_to_csv(analysis: Dict[str, Any]) -> str:
                             str(costs.get('tier', 'Unknown'))
                         ])
                 rows.append(["", ""])
-            
+
             # Cost analysis text
             if cost_analysis := cost_data.get("analysis"):
                 rows.append(["Cost Analysis Details", clean_text_for_csv(cost_analysis)])
@@ -75,7 +75,7 @@ def safe_convert_to_csv(analysis: Dict[str, Any]) -> str:
         # ROI analysis section
         if roi_data := analysis_data.get("roi"):
             rows.append(["ROI ANALYSIS", ""])
-            
+
             # Financial metrics
             if metrics := (roi_data.get("basic_metrics") or roi_data.get("key_metrics") or roi_data.get("financial_metrics")):
                 rows.append(["Financial Metrics", ""])
@@ -88,7 +88,7 @@ def safe_convert_to_csv(analysis: Dict[str, Any]) -> str:
                         else:
                             rows.append([key.replace("_", " ").title(), str(value)])
                 rows.append(["", ""])
-            
+
             # ROI analysis text
             if roi_analysis := roi_data.get("detailed_analysis"):
                 rows.append(["ROI Analysis Details", clean_text_for_csv(roi_analysis)])
@@ -154,7 +154,7 @@ def clean_text_for_csv(text: str) -> str:
     """Clean text for CSV export by removing problematic characters"""
     if not isinstance(text, str):
         text = str(text)
-    
+
     # Remove markdown formatting
     text = text.replace('**', '')  # Bold
     text = text.replace('*', '')   # Italic
@@ -163,7 +163,7 @@ def clean_text_for_csv(text: str) -> str:
     text = text.replace('\n', ' ') # Newlines
     text = text.replace('\r', ' ') # Carriage returns
     text = text.replace('"', "'")  # Quotes
-    
+
     # Limit length for CSV
     return text[:500] + "..." if len(text) > 500 else text
 
@@ -200,11 +200,11 @@ def safe_generate_summary(analysis: Dict[str, Any]) -> str:
                 "COST ANALYSIS:",
                 "-" * 15
             ])
-            
+
             if vm := cost_data.get("volume_metrics"):
                 summary_parts.append(f"Daily Requests: {vm.get('daily_requests', 0):,}")
                 summary_parts.append(f"Monthly Requests: {vm.get('monthly_requests', 0):,}")
-            
+
             if breakdown := cost_data.get("cost_breakdown"):
                 cheapest_model = min(
                     breakdown.items(),
@@ -286,7 +286,7 @@ def add_export_buttons(analysis: Dict[str, Any]):
     # FIXED: Generate unique suffix for this specific analysis/message
     unique_suffix = generate_unique_suffix()
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
+
     col1, col2, col3 = st.columns(3)
 
     # CSV Export - FIXED: Unique key
@@ -342,39 +342,39 @@ def add_export_buttons(analysis: Dict[str, Any]):
     # FIXED: Show preview with unique keys
     if st.checkbox("👀 Show Export Preview", key=f"show_preview_checkbox_{unique_suffix}"):
         tab1, tab2, tab3 = st.tabs(["📊 CSV Preview", "📋 JSON Preview", "📧 Summary Preview"])
-        
+
         with tab1:
             try:
                 csv_preview = safe_convert_to_csv(analysis)
                 st.text_area(
-                    "CSV Data", 
-                    csv_preview[:1000] + "..." if len(csv_preview) > 1000 else csv_preview, 
-                    height=200, 
+                    "CSV Data",
+                    csv_preview[:1000] + "..." if len(csv_preview) > 1000 else csv_preview,
+                    height=200,
                     key=f"csv_preview_{unique_suffix}"
                 )
             except Exception as e:
                 st.error(f"CSV preview error: {e}")
-        
+
         with tab2:
             try:
                 clean_analysis = clean_for_json(analysis)
                 json_preview = json.dumps(clean_analysis, indent=2, default=str)
                 st.text_area(
-                    "JSON Data", 
-                    json_preview[:1000] + "..." if len(json_preview) > 1000 else json_preview, 
-                    height=200, 
+                    "JSON Data",
+                    json_preview[:1000] + "..." if len(json_preview) > 1000 else json_preview,
+                    height=200,
                     key=f"json_preview_{unique_suffix}"
                 )
             except Exception as e:
                 st.error(f"JSON preview error: {e}")
-        
+
         with tab3:
             try:
                 summary_preview = safe_generate_summary(analysis)
                 st.text_area(
-                    "Summary", 
-                    summary_preview[:1000] + "..." if len(summary_preview) > 1000 else summary_preview, 
-                    height=200, 
+                    "Summary",
+                    summary_preview[:1000] + "..." if len(summary_preview) > 1000 else summary_preview,
+                    height=200,
                     key=f"summary_preview_{unique_suffix}"
                 )
             except Exception as e:
