@@ -1,5 +1,5 @@
 """
-Fixed Chat UI components with proper form handling and text formatting
+FIXED: Chat UI components with proper message display and form handling
 """
 import streamlit as st
 from typing import Dict, Any
@@ -7,8 +7,29 @@ from datetime import datetime
 import traceback
 
 
+def clean_text_for_display(text: str) -> str:
+    """FIXED: Clean text to prevent LaTeX and formatting issues"""
+    if not isinstance(text, str):
+        text = str(text)
+    
+    # Remove all problematic formatting that causes LaTeX issues
+    text = text.replace("$", "\\$")      # Escape dollar signs
+    text = text.replace("**", "")        # Remove bold markdown
+    text = text.replace("*", "")         # Remove italic markdown
+    text = text.replace("#", "")         # Remove header markdown
+    text = text.replace("`", "")         # Remove code markdown
+    text = text.replace("_", "\\_")      # Escape underscores
+    text = text.replace("^", "\\^")      # Escape carets
+    text = text.replace("{", "\\{")      # Escape braces
+    text = text.replace("}", "\\}")      # Escape braces
+    text = text.replace("\\n", " ")      # Replace newlines with spaces
+    text = text.replace("\\r", " ")      # Replace carriage returns
+    
+    return text
+
+
 def display_message(message: Dict[str, str]):
-    """Display a single chat message with proper formatting"""
+    """FIXED: Display a single chat message with proper formatting"""
     with st.chat_message(message["role"]):
         if message["role"] == "assistant" and "analysis" in message:
             from app.components.visualizations import display_enhanced_analysis
@@ -38,17 +59,8 @@ def display_message(message: Dict[str, str]):
         else:
             # FIXED: Properly clean content to prevent LaTeX and formatting issues
             content = message["content"]
-            # Remove all problematic formatting that causes LaTeX issues
-            content = content.replace("$", "\\$")    # Escape dollar signs
-            content = content.replace("**", "")      # Remove bold markdown
-            content = content.replace("*", "")       # Remove italic markdown
-            content = content.replace("#", "")       # Remove header markdown
-            content = content.replace("`", "")       # Remove code markdown
-            content = content.replace("_", "\\_")    # Escape underscores
-            content = content.replace("^", "\\^")    # Escape carets
-            content = content.replace("{", "\\{")    # Escape braces
-            content = content.replace("}", "\\}")    # Escape braces
-            st.markdown(content)
+            clean_content = clean_text_for_display(content)
+            st.markdown(clean_content)
 
 
 def render_chat_interface(orchestrator):
@@ -81,7 +93,7 @@ def render_chat_interface(orchestrator):
         # Display user message immediately
         with st.chat_message("user"):
             # FIXED: Clean user input to prevent formatting issues
-            clean_prompt = prompt.replace("$", "\\$").replace("**", "").replace("*", "")
+            clean_prompt = clean_text_for_display(prompt)
             st.markdown(clean_prompt)
 
         # Get assistant response

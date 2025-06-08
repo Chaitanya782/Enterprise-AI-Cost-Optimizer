@@ -1,5 +1,5 @@
 """
-Enhanced form-based input component with improved design
+FIXED: Enhanced form-based input component with proper processing
 """
 import streamlit as st
 from typing import Dict, Any, Optional, List
@@ -25,7 +25,7 @@ class AIAnalysisForm:
         </div>
         """, unsafe_allow_html=True)
         
-        with st.form("ai_analysis_form"):
+        with st.form("ai_analysis_form", clear_on_submit=True):
             # Basic Information
             st.markdown("### 🏢 Basic Information")
             col1, col2 = st.columns(2, gap="large")
@@ -308,7 +308,7 @@ class AIAnalysisForm:
 
 
 def render_form_interface(orchestrator):
-    """Render the form-based interface with improved design"""
+    """FIXED: Render the form-based interface with proper processing"""
     form_handler = AIAnalysisForm()
     
     # Add form toggle with better styling
@@ -337,13 +337,10 @@ def render_form_interface(orchestrator):
         form_data = form_handler.render_form()
         
         if form_data:
-            # FIXED: Properly process form data
+            # FIXED: Properly process form data without conflicts
             try:
                 # Convert form data to query
                 query = form_handler.convert_form_to_query(form_data)
-                
-                # Store form data in session state
-                st.session_state.last_form_data = form_data
                 
                 # Add to messages with proper formatting
                 st.session_state.messages.append({
@@ -370,7 +367,7 @@ def render_form_interface(orchestrator):
                     
                     st.session_state.total_cost += 0.02  # Higher cost for comprehensive analysis
                     
-                    st.success("✅ Analysis completed! Scroll up to see your previous conversations and results.")
+                    st.success("✅ Analysis completed! Scroll up to see your results.")
                     st.rerun()
                     
             except Exception as e:
