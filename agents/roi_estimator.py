@@ -128,7 +128,7 @@ Use conservative estimates, show ALL calculations step-by-step, and provide acti
             return -implementation_cost
 
         npv = -implementation_cost  # Initial investment (negative cash flow)
-        
+
         # VERIFIED: NPV formula: Σ(Cash Flow / (1 + r)^t) - Initial Investment
         for year in range(1, years + 1):
             discounted_benefit = annual_benefit / ((1 + discount_rate) ** year)
@@ -151,7 +151,7 @@ Use conservative estimates, show ALL calculations step-by-step, and provide acti
             # Calculate NPV at current rate
             npv = -implementation_cost
             npv_derivative = 0
-            
+
             for year in range(1, years + 1):
                 discount_factor = (1 + rate) ** year
                 npv += annual_benefit / discount_factor
@@ -164,15 +164,15 @@ Use conservative estimates, show ALL calculations step-by-step, and provide acti
             # Newton-Raphson update
             if abs(npv_derivative) < 1e-10:
                 break
-            
+
             rate_new = rate - npv / npv_derivative
-            
+
             # Ensure rate stays reasonable
             if rate_new < -0.99:
                 rate_new = -0.99
             elif rate_new > 10:  # 1000% max
                 rate_new = 10
-                
+
             rate = rate_new
 
         return rate
@@ -221,9 +221,9 @@ Use conservative estimates, show ALL calculations step-by-step, and provide acti
         # VERIFIED: Advanced metrics
         npv = self._calculate_npv(implementation_cost, annual_benefit, years)
         irr = self._calculate_irr(implementation_cost, annual_benefit, years)
-        
+
         # VERIFIED: Profitability Index = (PV of future cash flows) / Initial Investment
-        pv_benefits = sum(annual_benefit / ((1 + self.FINANCIAL_DEFAULTS["discount_rate"]) ** year) 
+        pv_benefits = sum(annual_benefit / ((1 + self.FINANCIAL_DEFAULTS["discount_rate"]) ** year)
                          for year in range(1, years + 1))
         profitability_index = pv_benefits / implementation_cost if implementation_cost > 0 else 0
 
