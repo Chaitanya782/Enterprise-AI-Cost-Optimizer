@@ -1,5 +1,5 @@
 """
-Optimized data visualization components for AI Cost Optimizer
+Enhanced data visualization components with improved spacing and design
 """
 import streamlit as st
 import plotly.graph_objects as go
@@ -15,15 +15,36 @@ def generate_unique_key(prefix: str = "chart") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:8]}"
 
 
+def clean_text_for_display(text: str) -> str:
+    """FIXED: Clean text to prevent LaTeX and formatting issues"""
+    if not isinstance(text, str):
+        text = str(text)
+
+    # Remove all problematic formatting that causes LaTeX issues
+    text = text.replace("$", "\\$")      # Escape dollar signs
+    text = text.replace("**", "")        # Remove bold markdown
+    text = text.replace("*", "")         # Remove italic markdown
+    text = text.replace("#", "")         # Remove header markdown
+    text = text.replace("`", "")         # Remove code markdown
+    text = text.replace("_", "\\_")      # Escape underscores
+    text = text.replace("^", "\\^")      # Escape carets
+    text = text.replace("{", "\\{")      # Escape braces
+    text = text.replace("}", "\\}")      # Escape braces
+    text = text.replace("\\n", " ")      # Replace newlines with spaces
+    text = text.replace("\\r", " ")      # Replace carriage returns
+
+    return text
+
+
 def create_cost_comparison_chart(cost_breakdown: Dict[str, Dict[str, float]]) -> Optional[go.Figure]:
-    """Create interactive cost comparison chart with time period toggle"""
+    """Create interactive cost comparison chart"""
     if not cost_breakdown:
         return None
 
     try:
         periods = ['daily_cost', 'monthly_cost', 'annual_cost']
         labels = ['Daily', 'Monthly', 'Annual']
-        colors = ['#3498db', '#2980b9', '#1f4e79']
+        colors = ['#667eea', '#764ba2', '#f093fb']
 
         # Filter valid models
         valid_models = [
@@ -55,7 +76,11 @@ def create_cost_comparison_chart(cost_breakdown: Dict[str, Dict[str, float]]) ->
                 textposition='auto',
                 marker_color=color,
                 visible=(i == 1),  # Show monthly by default
-                hovertemplate=f'<b>%{{x}}</b><br>{label}: $%{{y:,.2f}}<extra></extra>'
+                hovertemplate=f'<b>%{{x}}</b><br>{label}: $%{{y:,.2f}}<extra></extra>',
+                marker=dict(
+                    line=dict(width=0),
+                    opacity=0.8
+                )
             ))
 
         if not traces:
@@ -77,16 +102,23 @@ def create_cost_comparison_chart(cost_breakdown: Dict[str, Dict[str, float]]) ->
                     for i, label in enumerate(labels) if i < len(traces)
                 ]
             }],
-            title="Monthly AI Model Cost Comparison",
+            title={
+                "text": "Monthly AI Model Cost Comparison",
+                "x": 0.5,
+                "font": {"size": 20, "family": "Arial, sans-serif"}
+            },
             xaxis_title="AI Model",
             yaxis_title="Cost (USD)",
-            height=450,
+            height=500,
             showlegend=False,
             hovermode='x unified',
             plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Arial, sans-serif", size=12),
+            margin=dict(l=60, r=60, t=100, b=60)
         )
-        fig.update_xaxes(tickangle=45)
+        fig.update_xaxes(tickangle=45, tickfont=dict(size=11))
+        fig.update_yaxes(tickfont=dict(size=11))
         return fig
 
     except Exception as e:
@@ -106,7 +138,7 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
 
         impl_cost = metrics.get("implementation_cost", 50000)
         annual_benefit = metrics.get("annual_benefit", metrics.get("total_annual_benefit", 120000))
-        payback_years = min(metrics.get("payback_period_years", 1.5), 5)  # Cap at 5 years
+        payback_years = min(metrics.get("payback_period_years", 1.5), 5)
 
         years = list(range(6))
         cum_cost = [impl_cost] * 6
@@ -115,7 +147,7 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
 
         fig = go.Figure()
 
-        # Add data traces
+        # Add data traces with improved styling
         traces = [
             ("Implementation Cost", cum_cost, '#e74c3c', 'lines+markers'),
             ("Cumulative Benefits", cum_benefit, '#27ae60', 'lines+markers'),
@@ -125,37 +157,47 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
         for name, data, color, mode in traces:
             fig.add_trace(go.Scatter(
                 x=years, y=data, mode=mode, name=name,
-                line=dict(color=color, width=3, dash='dash' if name == 'Net Benefit' else 'solid'),
-                marker=dict(size=8),
+                line=dict(color=color, width=4, dash='dash' if name == 'Net Benefit' else 'solid'),
+                marker=dict(size=10, line=dict(width=2, color='white')),
                 fill='tonexty' if name == 'Net Benefit' else None,
                 fillcolor='rgba(52,152,219,0.1)' if name == 'Net Benefit' else None,
                 hovertemplate=f'Year %{{x}}<br>{name}: $%{{y:,.0f}}<extra></extra>'
             ))
 
-        # Add break-even line and annotation
+        # Add break-even line
         if 0 < payback_years <= 5:
-            fig.add_vline(x=payback_years, line_width=2, line_dash="dash", line_color="orange",
-                          annotation_text=f"Break-even: {payback_years:.1f}y")
-
-        final_roi = ((cum_benefit[-1] - impl_cost) / impl_cost * 100) if impl_cost > 0 else 0
-        fig.add_annotation(
-            x=4.5, y=max(net_benefit[-1], 0),
-            text=f"5-Year ROI: {final_roi:.0f}%",
-            showarrow=True, arrowhead=2,
-            bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#3498db",
-            font=dict(size=12)
-        )
+            fig.add_vline(
+                x=payback_years,
+                line_width=3,
+                line_dash="dash",
+                line_color="#f39c12",
+                annotation_text=f"Break-even: {payback_years:.1f}y",
+                annotation_position="top"
+            )
 
         fig.update_layout(
-            title="ROI Timeline & Break-Even Analysis",
+            title={
+                "text": "ROI Timeline & Break-Even Analysis",
+                "x": 0.5,
+                "font": {"size": 20, "family": "Arial, sans-serif"}
+            },
             xaxis_title="Years",
             yaxis_title="Amount (USD)",
-            height=450,
+            height=500,
             hovermode='x unified',
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="rgba(0,0,0,0.2)",
+                borderwidth=1
+            ),
             plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Arial, sans-serif", size=12),
+            margin=dict(l=60, r=60, t=100, b=60)
         )
 
         return fig
@@ -165,163 +207,42 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
         return None
 
 
-def create_task_priority_matrix(tasks_data: Any) -> go.Figure:
-    """Create task prioritization matrix with quadrant analysis"""
-    try:
-        # Extract tasks from different data formats
-        if isinstance(tasks_data, dict) and "automated_analysis" in tasks_data:
-            auto_analysis = tasks_data["automated_analysis"]
-            if "automation_analysis" in auto_analysis:
-                aa = auto_analysis["automation_analysis"]
-                tasks = [{
-                    "name": "Primary Task",
-                    "complexity": int(aa.get("complexity_score", 0.5) * 10),
-                    "impact": int(aa.get("automation_potential", 0.5) * 10),
-                    "size": aa.get("annual_cost_savings", 10000) / 1000
-                }]
-            else:
-                tasks = []
-        elif isinstance(tasks_data, list):
-            tasks = tasks_data
-        else:
-            tasks = []
-
-        # Default tasks if no data
-        if not tasks:
-            tasks = [
-                {"name": "Customer Support", "complexity": 3, "impact": 9, "size": 120},
-                {"name": "Content Generation", "complexity": 2, "impact": 8, "size": 100},
-                {"name": "Document Processing", "complexity": 4, "impact": 8, "size": 90},
-                {"name": "Data Entry", "complexity": 1, "impact": 6, "size": 80},
-                {"name": "Report Generation", "complexity": 5, "impact": 7, "size": 70},
-                {"name": "Email Routing", "complexity": 2, "impact": 5, "size": 60}
-            ]
-
-        fig = go.Figure()
-
-        # Add scatter plot
-        fig.add_trace(go.Scatter(
-            x=[t["complexity"] for t in tasks],
-            y=[t["impact"] for t in tasks],
-            mode='markers+text',
-            marker=dict(
-                size=[max(20, min(80, t.get("size", 50))) for t in tasks],
-                color=[t["impact"] for t in tasks],
-                colorscale='RdYlGn',
-                showscale=True,
-                colorbar=dict(title="Impact Score", x=1.02),
-                line=dict(width=2, color='white')
-            ),
-            text=[t["name"] for t in tasks],
-            textposition="middle center",
-            textfont=dict(size=10, color="white"),
-            hovertemplate='<b>%{text}</b><br>Complexity: %{x}<br>Impact: %{y}<extra></extra>'
-        ))
-
-        # Add quadrant lines and labels
-        fig.add_hline(y=6.5, line_dash="dash", line_color="gray", opacity=0.7, line_width=1)
-        fig.add_vline(x=3, line_dash="dash", line_color="gray", opacity=0.7, line_width=1)
-
-        quadrants = [
-            (1.5, 9.2, "🚀 Quick Wins", "#27ae60"),
-            (4.5, 9.2, "📈 Strategic Projects", "#3498db"),
-            (1.5, 2.8, "⏳ Fill-ins", "#95a5a6"),
-            (4.5, 2.8, "❓ Questionable", "#e74c3c")
-        ]
-
-        for x, y, text, color in quadrants:
-            fig.add_annotation(
-                x=x, y=y, text=text, showarrow=False,
-                font=dict(size=12, color=color, family="Arial Black"),
-                bgcolor="rgba(255,255,255,0.8)",
-                bordercolor=color, borderwidth=1
-            )
-
-        fig.update_layout(
-            title="Task Prioritization Matrix",
-            xaxis_title="Implementation Complexity →",
-            yaxis_title="Business Impact →",
-            height=500,
-            xaxis=dict(range=[0, 6], gridcolor='lightgray'),
-            yaxis=dict(range=[0, 10], gridcolor='lightgray'),
-            showlegend=False,
-            plot_bgcolor='rgba(248,249,250,0.8)',
-            paper_bgcolor='rgba(0,0,0,0)'
-        )
-
-        return fig
-
-    except Exception as e:
-        st.error(f"Error creating task matrix: {e}")
-        fig = go.Figure()
-        fig.add_annotation(text="Task data not available", x=0.5, y=0.5, showarrow=False)
-        fig.update_layout(height=400, title="Task Prioritization Matrix")
-        return fig
-
-
-def create_savings_breakdown_chart(savings_data: Dict[str, float]) -> go.Figure:
-    """Create pie chart for savings breakdown"""
-    try:
-        if not savings_data:
-            savings_data = {
-                "Labor Cost Reduction": 60000,
-                "Efficiency Gains": 25000,
-                "Error Reduction": 15000,
-                "Process Optimization": 10000
-            }
-
-        fig = go.Figure(data=[go.Pie(
-            labels=list(savings_data.keys()),
-            values=list(savings_data.values()),
-            hole=0.4,
-            textinfo='label+percent',
-            textposition='auto',
-            marker=dict(colors=['#3498db', '#27ae60', '#f39c12', '#e74c3c'])
-        )])
-
-        fig.update_layout(
-            title="Annual Savings Breakdown",
-            height=400,
-            showlegend=True,
-            legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02)
-        )
-
-        return fig
-
-    except Exception as e:
-        st.error(f"Error creating savings chart: {e}")
-        return go.Figure()
-
-
-def _get_key_metrics(analysis: Dict[str, Any]) -> tuple:
-    """Extract key metrics from analysis data"""
-    roi_data = analysis.get("analysis", {}).get("roi", {})
-    cost_data = analysis.get("analysis", {}).get("costs", {})
-    infra_data = analysis.get("analysis", {}).get("infrastructure", {})
-
-    roi_metrics = roi_data.get("basic_metrics") or roi_data.get("key_metrics", {})
-
-    return roi_data, cost_data, infra_data, roi_metrics
-
-
 def display_enhanced_analysis(analysis: Dict[str, Any]):
-    """Enhanced analysis display with horizontal tabs"""
+    """Enhanced analysis display with improved design"""
+
+    # Compact executive summary with cards
     st.markdown("### 📊 Executive Summary")
 
     # Extract metrics
-    roi_data, cost_data, infra_data, roi_metrics = _get_key_metrics(analysis)
+    roi_data = analysis.get("analysis", {}).get("roi", {})
+    cost_data = analysis.get("analysis", {}).get("costs", {})
+    infra_data = analysis.get("analysis", {}).get("infrastructure", {})
+    tasks_data = analysis.get("analysis", {}).get("tasks", {})
+    roi_metrics = roi_data.get("basic_metrics") or roi_data.get("key_metrics", {})
 
-    # Metrics dashboard
+    # Compact metrics dashboard
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         roi_pct = roi_metrics.get("roi_percentage", 0)
-        st.metric("ROI", f"{roi_pct:.0f}%", delta="5-year projection")
+        st.markdown(f"""
+        <div class="metric-container">
+            <h4 style="margin: 0; color: #667eea;">ROI</h4>
+            <h2 style="margin: 0.2rem 0; color: #1f2937;">{roi_pct:.0f}%</h2>
+            <small style="color: #6b7280;">5-year projection</small>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col2:
         if infra_data:
             monthly_savings = infra_data.get("potential_savings", 0)
-            st.metric("Monthly Savings", f"${monthly_savings:,.0f}", delta="Infrastructure optimization")
+            st.markdown(f"""
+            <div class="metric-container">
+                <h4 style="margin: 0; color: #27ae60;">Monthly Savings</h4>
+                <h2 style="margin: 0.2rem 0; color: #1f2937;">${monthly_savings:,.0f}</h2>
+                <small style="color: #6b7280;">Infrastructure optimization</small>
+            </div>
+            """, unsafe_allow_html=True)
         elif cost_data.get("cost_breakdown"):
             cheapest_cost = min(
                 (costs.get("monthly_cost", float('inf'))
@@ -330,38 +251,56 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
                 default=float('inf')
             )
             if cheapest_cost < float('inf'):
-                st.metric("Lowest Monthly Cost", f"${cheapest_cost:,.0f}", delta="Best LLM option")
-            else:
-                st.metric("Cost Analysis", "Available", delta="Multiple models compared")
-        else:
-            st.metric("Cost Analysis", "Available", delta="See detailed breakdown")
+                st.markdown(f"""
+                <div class="metric-container">
+                    <h4 style="margin: 0; color: #f093fb;">Lowest Cost</h4>
+                    <h2 style="margin: 0.2rem 0; color: #1f2937;">${cheapest_cost:,.0f}</h2>
+                    <small style="color: #6b7280;">Best LLM option</small>
+                </div>
+                """, unsafe_allow_html=True)
 
     with col3:
         payback = roi_metrics.get("payback_period_years", 0)
         if payback and payback != float('inf'):
             if payback < 1:
                 payback_months = roi_metrics.get("payback_period_months", payback * 12)
-                st.metric("Payback", f"{payback_months:.1f} months", delta="Quick ROI")
+                st.markdown(f"""
+                <div class="metric-container">
+                    <h4 style="margin: 0; color: #4facfe;">Payback</h4>
+                    <h2 style="margin: 0.2rem 0; color: #1f2937;">{payback_months:.1f}mo</h2>
+                    <small style="color: #6b7280;">Quick ROI</small>
+                </div>
+                """, unsafe_allow_html=True)
             else:
-                st.metric("Payback", f"{payback:.1f} years", delta="Long-term value")
-        else:
-            st.metric("Implementation", "Ready", delta="Analysis complete")
+                st.markdown(f"""
+                <div class="metric-container">
+                    <h4 style="margin: 0; color: #4facfe;">Payback</h4>
+                    <h2 style="margin: 0.2rem 0; color: #1f2937;">{payback:.1f}yr</h2>
+                    <small style="color: #6b7280;">Long-term value</small>
+                </div>
+                """, unsafe_allow_html=True)
 
     with col4:
         confidence = analysis.get("confidence", 0)
         intent = analysis.get("intent", "general")
-        st.metric("Analysis Confidence", f"{confidence:.0%}", delta=f"{intent.title()} focus")
+        st.markdown(f"""
+        <div class="metric-container">
+            <h4 style="margin: 0; color: #43e97b;">Confidence</h4>
+            <h2 style="margin: 0.2rem 0; color: #1f2937;">{confidence:.0%}</h2>
+            <small style="color: #6b7280;">{intent.title()} focus</small>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.divider()
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # Build tabs
+    # Build tabs - ENHANCED to include ALL sections
     tab_data = []
     if cost_data or infra_data:
         tab_data.append(("💰 Cost Analysis", "cost", cost_data, infra_data))
     if roi_data:
         tab_data.append(("📊 ROI Analysis", "roi", roi_data, None))
-    if analysis.get("analysis", {}).get("tasks"):
-        tab_data.append(("📋 Task Analysis", "tasks", analysis.get("analysis", {}).get("tasks"), None))
+    if tasks_data:
+        tab_data.append(("📋 Task Analysis", "tasks", tasks_data, None))
     if analysis.get("recommendations"):
         tab_data.append(("🎯 Recommendations", "recommendations", analysis.get("recommendations"), None))
 
@@ -372,25 +311,30 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
         for tab, section_key, primary, secondary in zip(tabs, section_keys, primary_data, secondary_data):
             with tab:
                 if section_key == "cost":
-                    render_cost_analysis_section(primary, secondary, analysis)
+                    render_cost_analysis_section(primary, secondary)
                 elif section_key == "roi":
-                    render_roi_analysis_section(primary, analysis)
+                    render_roi_analysis_section(primary)
                 elif section_key == "tasks":
-                    render_task_analysis_section(primary, analysis)
+                    render_task_analysis_section(primary)
                 elif section_key == "recommendations":
                     render_recommendations_section(primary, analysis)
 
-    st.divider()
-    render_export_section(analysis)
+    # Export section at the bottom - INTEGRATED
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### 📥 Export Analysis Results")
+
+    # Import and use the comprehensive export functionality
+    from app.components.export import add_export_buttons
+    add_export_buttons(analysis)
 
 
-def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str, Any], analysis: Dict[str, Any]):
+def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str, Any]):
     """Render the cost analysis section with charts"""
     # Infrastructure analysis
     if infra_data:
         st.markdown("#### 🏗️ Infrastructure Cost Optimization")
-
         col1, col2, col3, col4 = st.columns(4)
+
         metrics = [
             ("Current Spend", infra_data.get('current_spend', 0), "/mo"),
             ("Target Spend", infra_data.get('target_spend', 0), "/mo"),
@@ -407,7 +351,9 @@ def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str
 
         if detailed := infra_data.get("detailed_analysis"):
             st.markdown("**📋 Optimization Strategy:**")
-            st.write(detailed)
+            # FIXED: Clean text for display
+            clean_text = clean_text_for_display(detailed)
+            st.write(clean_text)
 
     # LLM cost comparison
     if cost_data and cost_data.get("cost_breakdown"):
@@ -452,16 +398,18 @@ def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str
 
     if analysis_text := cost_data.get("analysis"):
         st.markdown("**🔍 Detailed Cost Analysis:**")
-        st.write(analysis_text)
+        # FIXED: Clean text for display
+        clean_text = clean_text_for_display(analysis_text)
+        st.write(clean_text)
 
 
-def render_roi_analysis_section(roi_data: Dict[str, Any], analysis: Dict[str, Any]):
+def render_roi_analysis_section(roi_data: Dict[str, Any]):
     """Render the ROI analysis section with timeline chart"""
     if fig := create_roi_timeline(roi_data):
         st.plotly_chart(fig, use_container_width=True, key=generate_unique_key("roi_chart"))
 
     # Financial metrics
-    if metrics := (roi_data.get("basic_metrics") or roi_data.get("key_metrics")):
+    if metrics := (roi_data.get("basic_metrics") or roi_data.get("key_metrics") or roi_data.get("financial_metrics")):
         st.markdown("#### 💰 Financial Summary")
         col1, col2, col3 = st.columns(3)
 
@@ -489,18 +437,19 @@ def render_roi_analysis_section(roi_data: Dict[str, Any], analysis: Dict[str, An
 
     if detailed := roi_data.get("detailed_analysis"):
         st.markdown("**🔍 Detailed ROI Analysis:**")
-        st.write(detailed)
+        # FIXED: Clean text for display
+        clean_text = clean_text_for_display(detailed)
+        st.write(clean_text)
 
 
-def render_task_analysis_section(tasks_data: Any, analysis: Dict[str, Any]):
-    """Render the task analysis section with priority matrix"""
-    fig = create_task_priority_matrix(tasks_data)
-    st.plotly_chart(fig, use_container_width=True, key=generate_unique_key("task_chart"))
-
+def render_task_analysis_section(tasks_data: Any):
+    """Render the task analysis section"""
     if isinstance(tasks_data, dict):
         if detailed := tasks_data.get("detailed_analysis"):
             st.markdown("**🔍 Detailed Task Analysis:**")
-            st.write(detailed)
+            # FIXED: Clean text for display
+            clean_text = clean_text_for_display(detailed)
+            st.write(clean_text)
         elif auto_analysis := tasks_data.get("automated_analysis"):
             if aa := auto_analysis.get("automation_analysis"):
                 st.markdown("#### 🤖 Automation Potential")
@@ -523,17 +472,23 @@ def render_task_analysis_section(tasks_data: Any, analysis: Dict[str, Any]):
 
             if detailed := auto_analysis.get("detailed_analysis"):
                 st.markdown("**📋 Implementation Analysis:**")
-                st.write(detailed)
+                # FIXED: Clean text for display
+                clean_text = clean_text_for_display(detailed)
+                st.write(clean_text)
     elif isinstance(tasks_data, str):
         st.markdown("**📋 Task Analysis:**")
-        st.write(tasks_data)
+        # FIXED: Clean text for display
+        clean_text = clean_text_for_display(tasks_data)
+        st.write(clean_text)
 
 
 def render_recommendations_section(recommendations: List[str], analysis: Dict[str, Any]):
     """Render the recommendations section"""
     st.markdown("#### 🎯 Key Recommendations")
     for i, rec in enumerate(recommendations, 1):
-        st.markdown(f"**{i}.** {rec}")
+        # FIXED: Clean recommendation text
+        clean_rec = clean_text_for_display(str(rec))
+        st.markdown(f"**{i}.** {clean_rec}")
 
     st.markdown("#### 📅 Implementation Roadmap")
 
@@ -600,26 +555,3 @@ def render_recommendations_section(recommendations: List[str], analysis: Dict[st
         for task in tasks:
             st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• {task}")
         st.markdown("")
-
-
-def render_export_section(analysis: Dict[str, Any]):
-    """Render export options"""
-    st.markdown("### 📥 Export Analysis Results")
-
-    col1, col2, col3 = st.columns(3)
-
-    export_buttons = [
-        ("📊 Export to CSV", "export_csv", "CSV export functionality ready"),
-        ("📋 Generate Report", "export_report", "Report generation functionality ready"),
-        ("📧 Email Summary", "export_email", "Email functionality ready for implementation")
-    ]
-
-    for col, (label, key, message) in zip([col1, col2, col3], export_buttons):
-        with col:
-            if st.button(label, key=key):
-                st.success(message)
-
-    # Raw data toggle
-    if st.checkbox("🔧 Show Raw Analysis Data", key="show_raw_data"):
-        st.markdown("**Raw Analysis JSON:**")
-        st.json(analysis)

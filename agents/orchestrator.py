@@ -1,4 +1,6 @@
-"""Enhanced Multi-Agent Orchestrator with Rate Limiting and Chat Context Memory"""
+"""
+Enhanced Multi-Agent Orchestrator with Fixed Intent Classification for Specific Keywords
+"""
 from typing import Dict, Any, Optional, List, Tuple
 import re
 import time
@@ -7,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from threading import Lock
 import sys
+from collections import defaultdict
+import json
 
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -18,19 +22,30 @@ from memory.context_analyzer import ContextAnalyzer
 from utils.logger import logger
 
 class RateLimiter:
-    """Simple rate limiter to prevent API calls from being made too quickly"""
+    """Advanced rate limiter with burst handling and adaptive delays"""
 
-    def __init__(self, calls_per_minute: int = 30, min_delay: float = 0.5):
+    def __init__(self, calls_per_minute: int = 30, min_delay: float = 0.5, burst_limit: int = 5):
         self.calls_per_minute = calls_per_minute
         self.min_delay = min_delay
+        self.burst_limit = burst_limit
         self.call_times = []
+        self.burst_count = 0
         self.lock = Lock()
         self.last_call_time = 0
 
     def wait_if_needed(self):
-        """Wait if necessary to respect rate limits"""
+        """Advanced rate limiting with burst handling"""
         with self.lock:
             current_time = time.time()
+
+            # Reset burst count if enough time has passed
+            if current_time - self.last_call_time > 60:
+                self.burst_count = 0
+
+            # Handle burst requests
+            if self.burst_count >= self.burst_limit:
+                adaptive_delay = self.min_delay * (1 + self.burst_count * 0.5)
+                time.sleep(adaptive_delay)
 
             # Ensure minimum delay between calls
             time_since_last = current_time - self.last_call_time
@@ -55,502 +70,624 @@ class RateLimiter:
             # Record this call
             self.call_times.append(current_time)
             self.last_call_time = current_time
+            self.burst_count += 1
 
-class Orchestrator:
-    """Enhanced Orchestrator with rate limiting and conversation context memory"""
+class AdvancedOrchestrator:
+    """
+    Top-Level Advanced Orchestrator with Enhanced Intelligence and FIXED Intent Classification
+    """
 
-    INTENT_KEYWORDS_ENHANCED = {
-        "cost_analysis": {
-            # High priority cost terms (weight 3x)
-            "high_priority": ["cost", "price", "pricing", "budget", "expensive", "cheap", "spend", "fee"],
-            # Medium priority cost terms (weight 2x)
-            "medium_priority": ["compare llm", "llm cost", "api cost", "monthly cost", "save money", "reduce cost",
-                                "cost of implementing", "budget for", "expense", "financial"],
-            # Context cost terms (weight 1x)
-            "context": ["gpt-4 cost", "claude cost", "api pricing", "token cost", "usage cost"]
-        },
-        "task_analysis": {
-            "high_priority": ["automate", "workflow", "process", "streamline", "optimize"],
-            "medium_priority": ["task", "implement", "ai for", "replace", "manual", "repetitive", "efficiency",
-                                "productivity"],
-            "context": ["automation", "digitize", "transform"]
+    # FIXED: Enhanced intent classification with specific keyword triggers
+    INTENT_CLASSIFICATION = {
+        "cost_optimization": {
+            # FIXED: Added specific trigger phrases that should immediately trigger cost analysis
+            "trigger_phrases": [
+                "cost analysis", "cost comparison", "compare costs", "llm costs", "api costs",
+                "pricing analysis", "cost breakdown", "cost optimization", "reduce costs",
+                "save money", "cheaper alternative", "budget analysis", "spending analysis"
+            ],
+            "primary_indicators": [
+                "reduce cost", "save money", "cost optimization", "cheaper alternative",
+                "budget reduction", "cost efficiency", "lower spending", "cost cutting"
+            ],
+            "secondary_indicators": [
+                "compare prices", "pricing comparison", "budget analysis",
+                "spending review", "cost breakdown", "financial optimization"
+            ],
+            "context_indicators": [
+                "expensive", "budget", "cost", "price", "spend", "fee", "charge"
+            ],
+            "confidence_boost": 2.0,  # Increased boost for cost analysis
+            "required_agents": ["cost"],
+            "optional_agents": ["roi", "task"]
         },
         "roi_analysis": {
-            "high_priority": ["roi", "return", "investment", "payback", "benefit", "value"],
-            "medium_priority": ["worth", "profit", "savings", "break even", "business case", "justification"],
-            "context": ["cost benefit", "financial return"]
+            # FIXED: Added specific ROI trigger phrases
+            "trigger_phrases": [
+                "roi analysis", "roi calculation", "return on investment", "calculate roi",
+                "roi estimate", "investment return", "payback analysis", "break even analysis",
+                "business case", "financial justification", "investment analysis"
+            ],
+            "primary_indicators": [
+                "return on investment", "roi calculation", "payback period", "break even",
+                "investment analysis", "financial return", "profit analysis", "value assessment"
+            ],
+            "secondary_indicators": [
+                "worth investing", "business case", "financial justification", "cost benefit",
+                "investment decision", "financial impact", "revenue impact"
+            ],
+            "context_indicators": [
+                "roi", "return", "investment", "benefit", "value", "profit", "payback"
+            ],
+            "confidence_boost": 2.0,  # Increased boost for ROI analysis
+            "required_agents": ["roi"],
+            "optional_agents": ["cost", "task"]
+        },
+        "automation_planning": {
+            # FIXED: Added specific task/automation trigger phrases
+            "trigger_phrases": [
+                "task analysis", "automation analysis", "workflow analysis", "process analysis",
+                "automate tasks", "automation opportunities", "task automation", "workflow automation",
+                "process optimization", "automation planning", "task optimization"
+            ],
+            "primary_indicators": [
+                "automate process", "workflow automation", "task automation", "process optimization",
+                "eliminate manual work", "streamline operations", "efficiency improvement"
+            ],
+            "secondary_indicators": [
+                "reduce manual effort", "optimize workflow", "improve efficiency", "automation opportunities",
+                "process improvement", "operational excellence", "productivity enhancement"
+            ],
+            "context_indicators": [
+                "automate", "workflow", "process", "manual", "efficiency", "productivity", "task"
+            ],
+            "confidence_boost": 2.0,  # Increased boost for task analysis
+            "required_agents": ["task"],
+            "optional_agents": ["cost", "roi"]
+        },
+        "comprehensive_analysis": {
+            "trigger_phrases": [
+                "comprehensive analysis", "complete analysis", "full analysis", "detailed analysis",
+                "thorough analysis", "end-to-end analysis", "holistic analysis", "overall analysis"
+            ],
+            "primary_indicators": [
+                "complete analysis", "comprehensive review", "full assessment", "detailed evaluation",
+                "thorough analysis", "end-to-end review", "holistic assessment"
+            ],
+            "secondary_indicators": [
+                "analyze everything", "full picture", "complete overview", "detailed breakdown",
+                "comprehensive study", "thorough evaluation", "complete assessment"
+            ],
+            "context_indicators": [
+                "comprehensive", "complete", "full", "detailed", "thorough", "holistic"
+            ],
+            "confidence_boost": 1.5,
+            "required_agents": ["cost", "roi", "task"],
+            "optional_agents": []
+        },
+        "vendor_comparison": {
+            "trigger_phrases": [
+                "compare providers", "provider comparison", "vendor comparison", "llm comparison",
+                "model comparison", "service comparison", "platform comparison"
+            ],
+            "primary_indicators": [
+                "compare providers", "vendor comparison", "provider analysis", "service comparison",
+                "platform comparison", "solution comparison", "alternative evaluation"
+            ],
+            "secondary_indicators": [
+                "which is better", "best option", "recommend provider", "provider selection",
+                "vendor evaluation", "service evaluation", "platform selection"
+            ],
+            "context_indicators": [
+                "compare", "versus", "vs", "alternative", "option", "choice", "provider"
+            ],
+            "confidence_boost": 1.8,
+            "required_agents": ["cost"],
+            "optional_agents": ["roi"]
         }
     }
 
-    PROVIDER_MAP = {
-        "aws": "AWS Bedrock", "bedrock": "AWS Bedrock", "amazon": "AWS Bedrock",
-        "openai": "OpenAI API", "gpt": "OpenAI API", "chatgpt": "OpenAI API",
-        "azure": "Azure OpenAI", "microsoft": "Azure OpenAI",
-        "anthropic": "Anthropic Claude", "claude": "Anthropic Claude",
-        "gemini": "Google Gemini", "google": "Google Gemini", "vertex": "Vertex AI",
-        "cohere": "Cohere", "huggingface": "Hugging Face", "meta": "Meta Llama"
+    # Advanced metric extraction patterns with validation
+    METRIC_PATTERNS = {
+        "financial": {
+            "monthly_spend": [
+                r'spending\s*\$(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)\b',
+                r'\$(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)\b',
+                r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:dollars?|usd)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)\b'
+            ],
+            "annual_spend": [
+                r'spending\s*\$(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:year|yearly|annually)\b',
+                r'\$(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:year|yearly|annually)\b'
+            ],
+            "budget": [
+                r'budget\s*(?:of|is)?\s*\$?(\d+(?:,\d{3})*(?:\.\d+)?)([kmb])?\b',
+                r'allocated\s*\$?(\d+(?:,\d{3})*(?:\.\d+)?)([kmb])?\b'
+            ],
+            "target_reduction": [
+                r'(?:reduce|save|cut|decrease)\s*(?:by|up\s*to)?\s*(\d+(?:\.\d+)?)\s*%',
+                r'(\d+(?:\.\d+)?)\s*%\s*(?:reduction|savings|decrease|cut)'
+            ]
+        },
+        "usage": {
+            "daily_requests": [
+                r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*(?:per\s*day|daily)',
+                r'(\d+(?:,\d{3})*)\s*daily\s*(?:requests?|calls?|queries?|tickets?|messages?)'
+            ],
+            "monthly_requests": [
+                r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*(?:per\s*month|monthly)',
+                r'(\d+(?:,\d{3})*)\s*monthly\s*(?:requests?|calls?|queries?|tickets?|messages?)'
+            ],
+            "team_size": [
+                r'team\s*(?:of|size)?\s*(\d+(?:,\d{3})*)\s*(?:people|members|employees|staff)?',
+                r'(\d+(?:,\d{3})*)\s*(?:people|members|employees|staff|users)'
+            ],
+            "hours_per_week": [
+                r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*hours?\s*(?:per\s*week|weekly)',
+                r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*hrs?\s*(?:per\s*week|weekly)'
+            ]
+        },
+        "technical": {
+            "input_tokens": [
+                r'(\d+(?:,\d{3})*)\s*input\s*tokens?',
+                r'(\d+(?:,\d{3})*)\s*tokens?\s*(?:per\s*)?input'
+            ],
+            "output_tokens": [
+                r'(\d+(?:,\d{3})*)\s*output\s*tokens?',
+                r'(\d+(?:,\d{3})*)\s*tokens?\s*(?:per\s*)?(?:response|output)'
+            ]
+        }
     }
 
-    USE_CASE_KEYWORDS = {
-        "customer_support": ["support", "helpdesk", "ticket", "customer service"],
-        "content_generation": ["content", "writing", "blog", "marketing", "copywriting"],
-        "data_analysis": ["analyze", "data", "report", "insights", "dashboard"],
-        "code_generation": ["code", "programming", "development", "api", "script"],
-        "document_processing": ["document", "pdf", "extract", "summarize", "review"],
-        "automation": ["automate", "workflow", "process", "streamline", "efficiency"]
+    # Provider mapping with enhanced detection
+    PROVIDER_ECOSYSTEM = {
+        "openai": {
+            "aliases": ["openai", "gpt", "chatgpt", "gpt-4", "gpt-3.5", "dall-e"],
+            "formal_name": "OpenAI API",
+            "category": "LLM Provider",
+            "strengths": ["performance", "reliability", "ecosystem"]
+        },
+        "anthropic": {
+            "aliases": ["anthropic", "claude", "claude-3", "claude-2"],
+            "formal_name": "Anthropic Claude",
+            "category": "LLM Provider",
+            "strengths": ["safety", "reasoning", "long-context"]
+        },
+        "google": {
+            "aliases": ["google", "gemini", "bard", "vertex", "palm"],
+            "formal_name": "Google Gemini",
+            "category": "LLM Provider",
+            "strengths": ["integration", "multimodal", "cost"]
+        },
+        "aws": {
+            "aliases": ["aws", "bedrock", "amazon", "sagemaker"],
+            "formal_name": "AWS Bedrock",
+            "category": "Cloud Platform",
+            "strengths": ["enterprise", "security", "integration"]
+        },
+        "azure": {
+            "aliases": ["azure", "microsoft", "azure openai"],
+            "formal_name": "Azure OpenAI",
+            "category": "Cloud Platform",
+            "strengths": ["enterprise", "compliance", "integration"]
+        }
     }
 
-    # USE_CASE_DEFAULTS = {
-    #     "Customer Support": {"input_tokens": 100, "output_tokens": 150, "daily_requests": 500},
-    #     "Content Generation": {"input_tokens": 50, "output_tokens": 400, "daily_requests": 200},
-    #     "Data Analysis": {"input_tokens": 300, "output_tokens": 200, "daily_requests": 100},
-    #     "Code Generation": {"input_tokens": 200, "output_tokens": 500, "daily_requests": 150}
-    # }
-
-    FINANCIAL_PATTERNS = [
-        r'spending\s*\$(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)',
-        r'(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:dollars?|usd)\s*([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)?',
-        r'budget\s*(?:of|is)?\s*\$?(\d+(?:,\d{3})*(?:\.\d+)?)([kmb])?\s*(?:per\s+)?(?:month|monthly|mo)?'
-    ]
-
-    PERCENT_PATTERNS = [
-        r'(?:reduce|save|cut|decrease)\s*(?:by|up\s*to)?\s*(\d+(?:\.\d+)?)\s*%',
-        r'(\d+(?:\.\d+)?)\s*%\s*(?:reduction|savings|decrease)',
-        r'target\s*(?:of|is)?\s*(\d+(?:\.\d+)?)\s*%'
-    ]
-
-    USAGE_PATTERNS = {
-        'daily_requests': [
-            r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*(?:per\s*day|daily)',
-            r'(\d+(?:,\d{3})*)\s*daily\s*(?:requests?|calls?|queries?|tickets?|messages?)',
-            r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*a\s*day',
-            r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*each\s*day'
-        ],
-        'monthly_requests': [
-            r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*(?:per\s*month|monthly)',
-            r'(\d+(?:,\d{3})*)\s*monthly\s*(?:requests?|calls?|queries?|tickets?|messages?)',
-            r'(\d+(?:,\d{3})*)\s*(?:requests?|calls?|queries?|tickets?|messages?)\s*a\s*month'
-        ],
-        'users': [
-            r'(\d+(?:,\d{3})*)\s*(?:users?|customers?|employees?|agents?|staff)',
-            r'team\s*of\s*(\d+(?:,\d{3})*)',
-            r'(\d+(?:,\d{3})*)\s*people'
-        ],
-        'hours_saved': [
-            r'save\s*(\d+(?:,\d{3})*)\s*hours?',
-            r'(\d+(?:,\d{3})*)\s*hours?\s*(?:saved|reduction|per\s*week)',
-            r'reduce\s*(?:by\s*)?(\d+(?:,\d{3})*)\s*hours?'
-        ]
-    }
-    TOKEN_PATTERNS = {
-        'input_tokens': [
-            r'(\d+(?:,\d{3})*)\s*input\s*tokens?',
-            r'(\d+(?:,\d{3})*)\s*tokens?\s*(?:per\s*)?input',
-            r'prompt\s*(?:of|is)?\s*(\d+(?:,\d{3})*)\s*tokens?',
-            r'send\s*(\d+(?:,\d{3})*)\s*tokens?'
-        ],
-        'output_tokens': [
-            r'(\d+(?:,\d{3})*)\s*output\s*tokens?',
-            r'(\d+(?:,\d{3})*)\s*tokens?\s*(?:per\s*)?(?:response|output)',
-            r'generate\s*(\d+(?:,\d{3})*)\s*tokens?',
-            r'response\s*(?:of|is)?\s*(\d+(?:,\d{3})*)\s*tokens?'
-        ],
-        'avg_tokens': [
-            r'(\d+(?:,\d{3})*)\s*tokens?\s*(?:average|avg|typical)',
-            r'(?:average|avg|typical)\s*(\d+(?:,\d{3})*)\s*tokens?'
-        ]
-    }
-
-    COMPLEXITY_INDICATORS = {
-        'high_complexity': [
-            'detailed', 'comprehensive', 'complex', 'thorough', 'in-depth',
-            'technical', 'legal', 'medical', 'scientific', 'analytical',
-            'long responses', 'detailed answers', 'extensive output'
-        ],
-        'medium_complexity': [
-            'moderate', 'standard', 'typical', 'normal', 'regular',
-            'balanced', 'structured'
-        ],
-        'low_complexity': [
-            'simple', 'basic', 'brief', 'short', 'quick', 'minimal',
-            'concise', 'straightforward', 'summary', 'bullet points'
-        ]
-    }
-
-    VOLUME_INDICATORS = {
-        'high_volume': [
-            'enterprise', 'large scale', 'high volume', 'thousands', 'millions',
-            'busy', 'heavy usage', 'peak hours', '24/7', 'continuous'
-        ],
-        'medium_volume': [
-            'moderate', 'regular', 'standard', 'typical', 'normal business hours'
-        ],
-        'low_volume': [
-            'small', 'startup', 'limited', 'few', 'occasional', 'light usage',
-            'testing', 'pilot', 'prototype'
-        ]
-    }
-
-    INDUSTRY_INDICATORS = {
-        'legal': ['legal', 'law', 'contract', 'compliance', 'regulation', 'attorney'],
-        'medical': ['medical', 'healthcare', 'patient', 'diagnosis', 'clinical'],
-        'technical': ['technical', 'engineering', 'code', 'API', 'software', 'development'],
-        'financial': ['financial', 'banking', 'trading', 'investment', 'accounting'],
-        'education': ['education', 'learning', 'student', 'academic', 'training'],
-        'ecommerce': ['ecommerce', 'shopping', 'product', 'order', 'customer service']
+    # Use case classification with complexity scoring
+    USE_CASE_TAXONOMY = {
+        "customer_support": {
+            "keywords": ["support", "helpdesk", "ticket", "customer service", "chat support"],
+            "complexity_score": 0.6,
+            "automation_potential": 0.8,
+            "typical_volume": "high",
+            "default_metrics": {"daily_requests": 1000, "input_tokens": 150, "output_tokens": 200}
+        },
+        "content_generation": {
+            "keywords": ["content", "writing", "blog", "marketing", "copywriting"],
+            "complexity_score": 0.7,
+            "automation_potential": 0.9,
+            "typical_volume": "medium",
+            "default_metrics": {"daily_requests": 200, "input_tokens": 100, "output_tokens": 500}
+        },
+        "data_analysis": {
+            "keywords": ["analyze", "data", "report", "insights", "dashboard", "analytics"],
+            "complexity_score": 0.8,
+            "automation_potential": 0.7,
+            "typical_volume": "medium",
+            "default_metrics": {"daily_requests": 100, "input_tokens": 400, "output_tokens": 300}
+        },
+        "document_processing": {
+            "keywords": ["document", "pdf", "extract", "summarize", "review", "contract"],
+            "complexity_score": 0.7,
+            "automation_potential": 0.9,
+            "typical_volume": "medium",
+            "default_metrics": {"daily_requests": 300, "input_tokens": 800, "output_tokens": 200}
+        },
+        "code_generation": {
+            "keywords": ["code", "programming", "development", "api", "script"],
+            "complexity_score": 0.9,
+            "automation_potential": 0.6,
+            "typical_volume": "low",
+            "default_metrics": {"daily_requests": 50, "input_tokens": 300, "output_tokens": 600}
+        }
     }
 
     def __init__(self, rate_limit_calls_per_minute: int = 30, min_delay_between_calls: float = 0.5):
-        """Initialize enhanced orchestrator with rate limiting and context memory"""
-        # Initialize rate limiter
+        """Initialize the advanced orchestrator"""
+        # Enhanced rate limiter
         self.rate_limiter = RateLimiter(rate_limit_calls_per_minute, min_delay_between_calls)
 
-        # Initialize existing agents
+        # Initialize agents with enhanced capabilities
         self.task_agent = TaskAnalyzerAgent(agent_key="task")
         self.cost_agent = CostCalculatorAgent(agent_key="cost")
         self.roi_agent = ROIEstimatorAgent(agent_key="roi")
 
-        # Initialize new context components
+        # Advanced context management
         self.session_manager = SessionManager()
         self.context_analyzer = ContextAnalyzer()
 
-        # Cache for intent classification to avoid repeated processing
+        # Intelligence caches
         self._intent_cache = {}
+        self._metric_cache = {}
+        self._provider_cache = {}
         self._cache_lock = Lock()
 
-        # Initialize agents
-        for agent in [self.task_agent, self.cost_agent, self.roi_agent]:
-            if hasattr(agent, 'create_or_get_agent'):
-                agent.create_or_get_agent()
+        # Analysis quality tracking
+        self.analysis_quality_scores = defaultdict(list)
+        self.user_feedback_scores = defaultdict(float)
 
-        logger.info("Enhanced Orchestrator initialized with rate limiting")
+        logger.info("Advanced Orchestrator initialized with enhanced intelligence")
 
-    def _get_dynamic_use_case_defaults(self, query: str, use_case: str) -> Dict[str, Any]:
-        """Get dynamic defaults based on query content and use case"""
-        query_lower = query.lower()
+    def _advanced_intent_classification(self, user_query: str, session_context: Dict[str, Any] = None) -> Tuple[str, float, Dict[str, Any]]:
+        """
+        FIXED: Advanced intent classification with specific keyword triggers
+        """
+        query_lower = user_query.lower()
 
-        # Enhanced base defaults
-        base_defaults = {
-            "Customer Support": {"input_tokens": 100, "output_tokens": 150, "daily_requests": 500},
-            "Content Generation": {"input_tokens": 50, "output_tokens": 400, "daily_requests": 200},
-            "Data Analysis": {"input_tokens": 300, "output_tokens": 200, "daily_requests": 100},
-            "Code Generation": {"input_tokens": 200, "output_tokens": 500, "daily_requests": 150},
-            "Document Processing": {"input_tokens": 500, "output_tokens": 250, "daily_requests": 100},
-            "Automation": {"input_tokens": 150, "output_tokens": 200, "daily_requests": 300},
-            "General AI Implementation": {"input_tokens": 150, "output_tokens": 250, "daily_requests": 300}
+        # Check cache first
+        cache_key = f"{query_lower}_{hash(str(session_context))}"
+        with self._cache_lock:
+            if cache_key in self._intent_cache:
+                return self._intent_cache[cache_key]
+
+        intent_scores = {}
+        analysis_metadata = {
+            "matched_patterns": {},
+            "confidence_factors": {},
+            "session_influence": 0.0,
+            "trigger_matched": False
         }
 
-        defaults = base_defaults.get(use_case, base_defaults["General AI Implementation"]).copy()
+        # FIXED: First check for exact trigger phrases (highest priority)
+        for intent, config in self.INTENT_CLASSIFICATION.items():
+            trigger_score = 0
+            matched_triggers = []
 
-        # Adjust for complexity
-        complexity_multiplier = 1.0
-        for level, indicators in self.COMPLEXITY_INDICATORS.items():
-            if any(indicator in query_lower for indicator in indicators):
-                if level == 'high_complexity':
-                    complexity_multiplier = 2.0
-                elif level == 'low_complexity':
-                    complexity_multiplier = 0.6
-                break
+            # Check for trigger phrases - these should immediately classify the intent
+            for trigger in config.get("trigger_phrases", []):
+                if trigger in query_lower:
+                    trigger_score += 50  # Very high score for trigger phrases
+                    matched_triggers.append(trigger)
+                    analysis_metadata["trigger_matched"] = True
+                    logger.info(f"TRIGGER MATCHED: '{trigger}' -> {intent}")
 
-        defaults["input_tokens"] = int(defaults["input_tokens"] * complexity_multiplier)
-        defaults["output_tokens"] = int(defaults["output_tokens"] * complexity_multiplier)
+            if trigger_score > 0:
+                intent_scores[intent] = trigger_score * config["confidence_boost"]
+                analysis_metadata["matched_patterns"][intent] = [f"TRIGGER: {t}" for t in matched_triggers]
+                continue  # Skip other scoring for this intent if trigger matched
 
-        # Adjust for volume
-        volume_multiplier = 1.0
-        for level, indicators in self.VOLUME_INDICATORS.items():
-            if any(indicator in query_lower for indicator in indicators):
-                if level == 'high_volume':
-                    volume_multiplier = 3.0
-                elif level == 'low_volume':
-                    volume_multiplier = 0.5
-                break
+        # If no triggers matched, use regular scoring
+        if not analysis_metadata["trigger_matched"]:
+            for intent, config in self.INTENT_CLASSIFICATION.items():
+                score = 0
+                matched_patterns = []
 
-        defaults["daily_requests"] = int(defaults["daily_requests"] * volume_multiplier)
+                # Primary indicators (highest weight)
+                for indicator in config["primary_indicators"]:
+                    if indicator in query_lower:
+                        score += 10 * len(indicator.split())
+                        matched_patterns.append(f"primary: {indicator}")
 
-        # Industry-specific adjustments
-        for industry, indicators in self.INDUSTRY_INDICATORS.items():
-            if any(indicator in query_lower for indicator in indicators):
-                if industry in ['legal', 'medical', 'technical']:
-                    defaults["input_tokens"] = int(defaults["input_tokens"] * 1.5)
-                    defaults["output_tokens"] = int(defaults["output_tokens"] * 1.3)
-                elif industry == 'financial':
-                    defaults["input_tokens"] = int(defaults["input_tokens"] * 1.3)
-                break
+                # Secondary indicators (medium weight)
+                for indicator in config["secondary_indicators"]:
+                    if indicator in query_lower:
+                        score += 5 * len(indicator.split())
+                        matched_patterns.append(f"secondary: {indicator}")
 
-        return defaults
+                # Context indicators (lower weight but cumulative)
+                context_matches = 0
+                for indicator in config["context_indicators"]:
+                    if indicator in query_lower:
+                        context_matches += 1
+                        matched_patterns.append(f"context: {indicator}")
 
-    def _extract_token_metrics(self, query: str, contextual_defaults: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Extract token-specific metrics from query"""
-        metrics = {}
-        query_lower = query.lower()
+                score += context_matches * 2
 
-        # Extract explicit token mentions
-        for metric, patterns in self.TOKEN_PATTERNS.items():
-            for pattern in patterns:
-                matches = re.findall(pattern, query_lower)
-                if matches:
-                    metrics[metric] = float(matches[0].replace(',', ''))
-                    break
+                # Apply confidence boost
+                if score > 0:
+                    score *= config["confidence_boost"]
 
-        # Handle average tokens -> split into input/output
-        if 'avg_tokens' in metrics:
-            if 'input_tokens' not in metrics:
-                metrics['input_tokens'] = metrics['avg_tokens'] * 0.4  # 40% input
-            if 'output_tokens' not in metrics:
-                metrics['output_tokens'] = metrics['avg_tokens'] * 0.6  # 60% output
-            del metrics['avg_tokens']
+                intent_scores[intent] = score
+                analysis_metadata["matched_patterns"][intent] = matched_patterns
 
-        # Apply contextual defaults
-        if contextual_defaults:
-            for key in ['suggested_input_tokens', 'suggested_output_tokens']:
-                if key in contextual_defaults and key.replace('suggested_', '') not in metrics:
-                    base_key = key.replace('suggested_', '')
-                    metrics[base_key] = contextual_defaults[key]
+        # Session context influence
+        if session_context:
+            locked_use_case = session_context.get("locked_use_case")
+            recent_intents = session_context.get("recent_intents", [])
 
-        return metrics
+            if recent_intents:
+                # Boost score for consistent intent patterns
+                most_recent = recent_intents[-1] if recent_intents else None
+                if most_recent in intent_scores:
+                    intent_scores[most_recent] *= 1.2
+                    analysis_metadata["session_influence"] = 0.2
 
-    # def reset_session_context(self, session_id: str):
-    #     """Reset session context to allow new use case"""
-    #     if session_id in self.session_manager.locked_use_cases:
-    #         del self.session_manager.locked_use_cases[session_id]
-    #     self.session_manager.clear_session(session_id)  # If this method exists
-    #     logger.info(f"Reset context for session {session_id}")
-
-    def _classify_intent(self, user_query: str, session_id: str = None) -> Tuple[str, float]:
-        """Enhanced intent classification with weighted scoring and cost prioritization"""
-
-        # Check session context first
-        if session_id and self.session_manager.get_locked_use_case(session_id):
-            query_lower = user_query.lower()
-            if any(word in query_lower for word in ['compare', 'versus', 'vs', 'difference']):
-                return ("cost_analysis", 0.8)
-
-        # Check cache
-        with self._cache_lock:
-            if user_query in self._intent_cache:
-                return self._intent_cache[user_query]
-
-        query_lower = user_query.lower()
-        weighted_scores = {}
-
-        # Enhanced weighted scoring using your new INTENT_KEYWORDS_ENHANCED
-        for intent, keyword_groups in self.INTENT_KEYWORDS_ENHANCED.items():
-            score = 0
-
-            # High priority keywords (3x weight)
-            for keyword in keyword_groups.get("high_priority", []):
-                if keyword in query_lower:
-                    score += 3 * len(keyword.split())
-
-            # Medium priority keywords (2x weight)
-            for keyword in keyword_groups.get("medium_priority", []):
-                if keyword in query_lower:
-                    score += 2 * len(keyword.split())
-
-            # Context keywords (1x weight)
-            for keyword in keyword_groups.get("context", []):
-                if keyword in query_lower:
-                    score += 1 * len(keyword.split())
-
-            weighted_scores[intent] = score
-
-        # Special case: If explicit cost terms + model names, boost cost_analysis
-        cost_terms = ["cost", "price", "pricing", "budget", "expensive", "cheap"]
-        model_names = ["gpt-4", "gpt-3.5", "claude", "gemini", "llama"]
-
-        has_cost_term = any(term in query_lower for term in cost_terms)
-        has_model_name = any(model in query_lower for model in model_names)
-
-        if has_cost_term and has_model_name:
-            weighted_scores["cost_analysis"] += 5  # Strong boost for cost + model queries
-
-        # Calculate result
-        total_score = sum(weighted_scores.values())
-        if total_score == 0:
-            result = ("general", 0.0)
+        # Calculate final intent and confidence
+        if not any(intent_scores.values()):
+            result = ("general_inquiry", 0.0, analysis_metadata)
         else:
-            max_intent = max(weighted_scores.items(), key=lambda x: x[1])
-            confidence = max_intent[1] / total_score
+            total_score = sum(intent_scores.values())
+            max_intent = max(intent_scores.items(), key=lambda x: x[1])
+            confidence = max_intent[1] / total_score if total_score > 0 else 0.0
 
-            # Enhanced confidence threshold - favor focused analysis over comprehensive
-            active_intents = [intent for intent, score in weighted_scores.items() if score > 0]
-            # In _classify_intent method, replace the comprehensive logic with:
-            if len(active_intents) > 1:
-                # Check for explicit comprehensive indicators
-                comprehensive_indicators = ["analysis", "compare", "evaluation", "assessment", "overview", "complete"]
-                has_comprehensive_intent = any(indicator in query_lower for indicator in comprehensive_indicators)
+            # FIXED: Higher confidence for trigger matches
+            if analysis_metadata["trigger_matched"]:
+                confidence = min(0.95, confidence * 1.5)  # Boost confidence for trigger matches
+                logger.info(f"TRIGGER CONFIDENCE BOOST: {max_intent[0]} -> {confidence:.2f}")
 
-                if has_comprehensive_intent or confidence < 0.5:  # Smart comprehensive detection
-                    result = ("comprehensive", confidence)
-                else:
-                    result = (max_intent[0], confidence)  # Stick with primary intent
+            # Adjust confidence based on clarity
+            active_intents = [intent for intent, score in intent_scores.items() if score > 0]
+            if len(active_intents) == 1:
+                confidence = min(0.95, confidence * 1.2)  # High confidence for clear intent
+            elif len(active_intents) > 3:
+                confidence = max(0.3, confidence * 0.8)   # Lower confidence for ambiguous queries
 
-        # Cache and return
+            result = (max_intent[0], confidence, analysis_metadata)
+
+        # Cache result
         with self._cache_lock:
-            self._intent_cache[user_query] = result
+            self._intent_cache[cache_key] = result
 
+        logger.info(f"Intent Classification: {result[0]} (confidence: {result[1]:.2f})")
         return result
 
-    def _extract_financial_metrics(self,query: str, contextual_defaults: dict = None) -> dict:
-        """Fixed version of financial data extraction"""
-        metrics = {}
+    def _intelligent_metric_extraction(self, query: str, intent: str, confidence: float) -> Dict[str, Any]:
+        """
+        Intelligent metric extraction with validation and smart defaults
+        """
         query_lower = query.lower()
-        multipliers = {'k': 1000, 'm': 1000000, 'b': 1000000000}
+        extracted_metrics = {}
+        validation_scores = {}
 
+        # Extract metrics by category
+        for category, patterns in self.METRIC_PATTERNS.items():
+            for metric, regex_patterns in patterns.items():
+                for pattern in regex_patterns:
+                    matches = re.finditer(pattern, query_lower, re.IGNORECASE)
+                    for match in matches:
+                        try:
+                            # Extract numeric value
+                            value_str = match.group(1).replace(',', '')
+                            value = float(value_str)
 
+                            # Handle multipliers
+                            if len(match.groups()) > 1 and match.group(2):
+                                multipliers = {'k': 1000, 'm': 1000000, 'b': 1000000000}
+                                multiplier = multipliers.get(match.group(2).lower(), 1)
+                                value *= multiplier
 
-        print(f"Processing query: '{query_lower}'")
+                            # Validate metric reasonableness
+                            validation_score = self._validate_metric(metric, value, query)
+                            if validation_score > 0.5:  # Only accept reasonable values
+                                extracted_metrics[metric] = value
+                                validation_scores[metric] = validation_score
+                                break  # Take first valid match
+                        except (ValueError, IndexError):
+                            continue
 
-        # Extract from current query
-        for i, pattern in enumerate(self.FINANCIAL_PATTERNS):
-            print(f"Testing pattern {i + 1}: {pattern}")
+        # Apply intelligent defaults based on intent and context
+        smart_defaults = self._generate_smart_defaults(intent, confidence, extracted_metrics, query)
 
-            for match in re.finditer(pattern, query_lower, re.IGNORECASE):
-                print(f"  Match found: '{match.group(0)}'")
-                print(f"  Groups: {match.groups()}")
+        return {
+            "extracted": extracted_metrics,
+            "validation_scores": validation_scores,
+            "smart_defaults": smart_defaults,
+            "confidence": sum(validation_scores.values()) / len(validation_scores) if validation_scores else 0.0
+        }
 
-                # Parse the amount
-                amount_str = match.group(1).replace(',', '')
-                amount = float(amount_str)
-                print(f"  Base amount: {amount}")
+    def _validate_metric(self, metric: str, value: float, query: str) -> float:
+        """
+        Validate if extracted metric value is reasonable
+        Returns confidence score 0.0-1.0
+        """
+        validation_rules = {
+            "monthly_spend": {"min": 0, "max": 10000000, "typical_range": (100, 100000)},
+            "annual_spend": {"min": 0, "max": 120000000, "typical_range": (1000, 1000000)},
+            "budget": {"min": 0, "max": 50000000, "typical_range": (1000, 500000)},
+            "daily_requests": {"min": 1, "max": 10000000, "typical_range": (10, 100000)},
+            "monthly_requests": {"min": 1, "max": 300000000, "typical_range": (100, 3000000)},
+            "team_size": {"min": 1, "max": 100000, "typical_range": (1, 1000)},
+            "hours_per_week": {"min": 0.1, "max": 168, "typical_range": (1, 80)},
+            "input_tokens": {"min": 1, "max": 100000, "typical_range": (10, 2000)},
+            "output_tokens": {"min": 1, "max": 100000, "typical_range": (10, 2000)},
+            "target_reduction": {"min": 0.01, "max": 0.95, "typical_range": (0.1, 0.7)}
+        }
 
-                # Check for multiplier - THIS IS THE CRITICAL FIX
-                multiplier_char = match.group(2)
-                print(f"  Multiplier group: '{multiplier_char}' (None: {multiplier_char is None})")
+        if metric not in validation_rules:
+            return 0.5  # Unknown metric, moderate confidence
 
-                if multiplier_char is not None and multiplier_char.strip():  # FIXED: Check for None AND empty string
-                    multiplier = multipliers.get(multiplier_char.lower().strip(), 1)
-                    amount *= multiplier
-                    print(f"  Applied multiplier {multiplier}: {amount}")
-                else:
-                    print(f"  No multiplier applied")
+        rules = validation_rules[metric]
 
-                # Determine context
-                context = match.group(0).lower()
-                print(f"  Context: '{context}'")
+        # Check absolute bounds
+        if value < rules["min"] or value > rules["max"]:
+            return 0.0  # Invalid value
 
-                if any(term in context for term in ['month', 'monthly', 'mo']):
-                    metrics.update({'monthly_spend': amount, 'annual_spend': amount * 12})
-                    print(f"  Set as monthly spend: ${amount:,.2f}")
-                elif any(term in context for term in ['year', 'annual', 'yearly']):
-                    metrics.update({'annual_spend': amount, 'monthly_spend': amount / 12})
-                    print(f"  Set as annual spend: ${amount:,.2f}")
-                else:
-                    metrics['budget'] = amount
-                    print(f"  Set as budget: ${amount:,.2f}")
+        # Check if in typical range
+        min_typical, max_typical = rules["typical_range"]
+        if min_typical <= value <= max_typical:
+            return 1.0  # High confidence
+        elif value < min_typical:
+            # Below typical range - confidence decreases with distance
+            ratio = value / min_typical
+            return max(0.3, ratio)
+        else:
+            # Above typical range - confidence decreases with distance
+            ratio = max_typical / value
+            return max(0.3, ratio)
 
-                break  # Take first match per pattern
+    def _generate_smart_defaults(self, intent: str, confidence: float, extracted_metrics: Dict[str, Any], query: str) -> Dict[str, Any]:
+        """
+        Generate intelligent defaults based on intent, confidence, and context
+        """
+        smart_defaults = {}
 
-        # Handle percentage patterns
-        for pattern in self.PERCENT_PATTERNS:
-            matches = re.findall(pattern, query_lower)
-            if matches:
-                metrics['target_reduction'] = float(matches[0]) / 100
-                print(f"  Found target reduction: {metrics['target_reduction']:.1%}")
+        # Determine use case from query
+        use_case = self._classify_use_case(query)
+        use_case_config = self.USE_CASE_TAXONOMY.get(use_case, {})
+
+        # Apply use case defaults
+        if "default_metrics" in use_case_config:
+            for metric, default_value in use_case_config["default_metrics"].items():
+                if metric not in extracted_metrics:
+                    smart_defaults[f"suggested_{metric}"] = default_value
+
+        # Intent-specific defaults
+        if intent == "cost_optimization":
+            if "monthly_spend" not in extracted_metrics:
+                smart_defaults["suggested_monthly_spend"] = 5000  # Reasonable starting point
+            if "target_reduction" not in extracted_metrics:
+                smart_defaults["suggested_target_reduction"] = 0.3  # 30% reduction target
+
+        elif intent == "roi_analysis":
+            if "budget" not in extracted_metrics:
+                smart_defaults["suggested_budget"] = 50000  # Implementation budget
+            if "hours_per_week" not in extracted_metrics:
+                smart_defaults["suggested_hours_per_week"] = 40  # Full-time equivalent
+
+        elif intent == "automation_planning":
+            if "team_size" not in extracted_metrics:
+                smart_defaults["suggested_team_size"] = 10  # Medium team
+            if "hours_per_week" not in extracted_metrics:
+                smart_defaults["suggested_hours_per_week"] = 20  # Part-time automation target
+
+        # Company size indicators
+        company_indicators = {
+            "startup": {"team_size": 5, "monthly_spend": 1000, "daily_requests": 100},
+            "small": {"team_size": 25, "monthly_spend": 5000, "daily_requests": 1000},
+            "medium": {"team_size": 100, "monthly_spend": 20000, "daily_requests": 5000},
+            "large": {"team_size": 500, "monthly_spend": 100000, "daily_requests": 25000},
+            "enterprise": {"team_size": 2000, "monthly_spend": 500000, "daily_requests": 100000}
+        }
+
+        query_lower = query.lower()
+        for size, defaults in company_indicators.items():
+            if size in query_lower or (size == "startup" and "start" in query_lower):
+                for metric, value in defaults.items():
+                    if metric not in extracted_metrics:
+                        smart_defaults[f"suggested_{metric}"] = value
                 break
 
-        # Apply contextual defaults if no explicit values found
-        if contextual_defaults and not metrics:
-            for key in ['suggested_budget', 'suggested_monthly_spend', 'suggested_annual_spend']:
-                if key in contextual_defaults:
-                    base_key = key.replace('suggested_', '')
-                    metrics[base_key] = contextual_defaults[key]
-                    print(f"  Applied contextual default {base_key}: {metrics[base_key]}")
+        return smart_defaults
 
-        return metrics
-
-    def _extract_usage_metrics(self, query: str, contextual_defaults: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Enhanced usage metrics extraction with context awareness"""
-        metrics = {}
+    def _classify_use_case(self, query: str) -> str:
+        """
+        Classify the use case based on query content
+        """
         query_lower = query.lower()
+        use_case_scores = {}
 
-        # Extract from current query
-        for metric, patterns in self.USAGE_PATTERNS.items():
-            for pattern in patterns:
-                matches = re.findall(pattern, query_lower)
-                if matches:
-                    metrics[metric] = float(matches[0].replace(',', ''))
+        for use_case, config in self.USE_CASE_TAXONOMY.items():
+            score = 0
+            for keyword in config["keywords"]:
+                if keyword in query_lower:
+                    score += len(keyword.split())
+            use_case_scores[use_case] = score
+
+        if use_case_scores and max(use_case_scores.values()) > 0:
+            return max(use_case_scores.items(), key=lambda x: x[1])[0]
+
+        return "general_ai_implementation"
+
+    def _intelligent_provider_detection(self, query: str) -> List[Dict[str, Any]]:
+        """
+        Intelligent provider detection with context and capabilities
+        """
+        query_lower = query.lower()
+        detected_providers = []
+
+        for provider_key, config in self.PROVIDER_ECOSYSTEM.items():
+            for alias in config["aliases"]:
+                if alias in query_lower:
+                    detected_providers.append({
+                        "key": provider_key,
+                        "formal_name": config["formal_name"],
+                        "category": config["category"],
+                        "strengths": config["strengths"],
+                        "mentioned_as": alias
+                    })
                     break
 
-        # Calculate derived metrics
-        if 'monthly_requests' in metrics and 'daily_requests' not in metrics:
-            metrics['daily_requests'] = metrics['monthly_requests'] / 30
-        elif 'daily_requests' in metrics and 'monthly_requests' not in metrics:
-            metrics['monthly_requests'] = metrics['daily_requests'] * 30
+        # If no providers mentioned, suggest based on intent and context
+        if not detected_providers:
+            # Default provider suggestions based on common use cases
+            default_suggestions = [
+                {"key": "openai", "formal_name": "OpenAI API", "category": "LLM Provider", "strengths": ["performance"], "mentioned_as": "suggested"},
+                {"key": "anthropic", "formal_name": "Anthropic Claude", "category": "LLM Provider", "strengths": ["safety"], "mentioned_as": "suggested"},
+                {"key": "google", "formal_name": "Google Gemini", "category": "LLM Provider", "strengths": ["cost"], "mentioned_as": "suggested"}
+            ]
+            detected_providers = default_suggestions[:2]  # Suggest top 2
 
-        # Apply contextual defaults
-        if contextual_defaults:
-            for key in ['suggested_daily_requests', 'suggested_monthly_requests']:
-                if key in contextual_defaults and key.replace('suggested_', '') not in metrics:
-                    base_key = key.replace('suggested_', '')
-                    metrics[base_key] = contextual_defaults[key]
+        return detected_providers
 
-        return metrics
+    def _determine_analysis_strategy(self, intent: str, confidence: float, metrics: Dict[str, Any], session_context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        Determine the optimal analysis strategy based on intent, confidence, and available data
+        """
+        strategy = {
+            "primary_analysis": [],
+            "secondary_analysis": [],
+            "analysis_depth": "standard",
+            "agent_coordination": "sequential",
+            "quality_threshold": 0.7
+        }
 
-    def _extract_providers(self, query: str, contextual_defaults: Dict[str, Any] = None) -> List[str]:
-        """Enhanced provider extraction with context awareness"""
-        query_lower = query.lower()
-        providers = list(dict.fromkeys(provider for key, provider in self.PROVIDER_MAP.items()
-                                     if key in query_lower))
+        intent_config = self.INTENT_CLASSIFICATION.get(intent, {})
 
-        # If no providers found in query, use contextual suggestions
-        if not providers and contextual_defaults and 'suggested_providers' in contextual_defaults:
-            providers = contextual_defaults['suggested_providers'][:2]  # Top 2 from context
+        # Determine required and optional agents
+        required_agents = intent_config.get("required_agents", ["cost"])
+        optional_agents = intent_config.get("optional_agents", [])
 
-        return providers
+        strategy["primary_analysis"] = required_agents
 
-    def _determine_use_case(self, query: str, session_id: str, contextual_defaults: Dict[str, Any] = None) -> str:
-        """Enhanced use case determination with session locking"""
+        # Add optional agents based on confidence and available data
+        if confidence > 0.7:
+            strategy["secondary_analysis"] = optional_agents
+        elif confidence > 0.5:
+            # Add most relevant optional agent
+            if optional_agents:
+                strategy["secondary_analysis"] = [optional_agents[0]]
 
-        # FIRST: Check if use case is already locked for this session
-        locked_use_case = self.session_manager.get_locked_use_case(session_id)
-        if locked_use_case:
-            logger.info(f"Using locked use case for session {session_id}: {locked_use_case}")
-            return locked_use_case
+        # Determine analysis depth
+        if confidence > 0.8 and len(metrics.get("extracted", {})) > 3:
+            strategy["analysis_depth"] = "comprehensive"
+        elif confidence < 0.5 or len(metrics.get("extracted", {})) < 2:
+            strategy["analysis_depth"] = "basic"
 
-        # EXISTING LOGIC: Only runs for first query in session
-        query_lower = query.lower()
-        scores = {use_case: sum(1 for keyword in keywords if keyword in query_lower)
-                  for use_case, keywords in self.USE_CASE_KEYWORDS.items()}
+        # Determine coordination strategy
+        if len(strategy["primary_analysis"]) + len(strategy["secondary_analysis"]) > 2:
+            strategy["agent_coordination"] = "parallel"
 
-        scores = {k: v for k, v in scores.items() if v > 0}
-        if scores:
-            determined_use_case = max(scores.items(), key=lambda x: x[1])[0].replace("_", " ").title()
-        elif contextual_defaults and 'suggested_use_case' in contextual_defaults:
-            determined_use_case = contextual_defaults['suggested_use_case']
-        else:
-            determined_use_case = "General AI Implementation"
+        # Adjust quality threshold based on confidence
+        strategy["quality_threshold"] = max(0.5, confidence * 0.8)
 
-        # LOCK the use case for this session
-        self.session_manager.lock_use_case(session_id, determined_use_case)
-        logger.info(f"Locked use case for session {session_id}: {determined_use_case}")
+        return strategy
 
-        return determined_use_case
-
-    def _safe_api_call(self, api_function, *args, **kwargs):
-        """Safely make API calls with rate limiting"""
-        try:
-            # Wait for rate limiter
-            self.rate_limiter.wait_if_needed()
-
-            # Make the API call
-            logger.info(f"Making API call to {api_function.__name__}")
-            result = api_function(*args, **kwargs)
-
-            logger.info(f"API call to {api_function.__name__} completed successfully")
-            return result
-
-        except Exception as e:
-            logger.error(f"API call to {api_function.__name__} failed: {str(e)}")
-            # Return a safe default or re-raise based on your needs
-            return {"error": f"API call failed: {str(e)}"}
-
-    def analyze_request(self, user_query: str, session_id: Optional[str] = None,
-                       user_id: Optional[str] = None) -> Dict[str, Any]:
-        """Enhanced request analysis with rate limiting and conversation context memory"""
+    def analyze_request(self, user_query: str, session_id: Optional[str] = None, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Advanced request analysis with intelligent orchestration
+        """
         # Generate session ID if not provided
         if not session_id:
-            session_id = f"orch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            session_id = f"advanced_orch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         # Create session if it doesn't exist
         try:
@@ -558,32 +695,41 @@ class Orchestrator:
         except Exception as e:
             logger.warning(f"Session creation failed: {str(e)}")
 
-        logger.info(f"Enhanced Orchestrator analyzing: {user_query[:100]}... (Session: {session_id})")
+        logger.info(f"Advanced Orchestrator analyzing: {user_query[:100]}... (Session: {session_id})")
 
-        # Get conversation history and context analysis
+        # Get conversation history and context
         try:
             history = self.session_manager.get_session_history(session_id)
             context_analysis = self.context_analyzer.analyze_context_relevance(user_query, history)
-            contextual_defaults = context_analysis.get('recommended_defaults', {}) if context_analysis else {}
+            session_context = {
+                "locked_use_case": self.session_manager.get_locked_use_case(session_id),
+                "recent_intents": [ctx.intent for ctx in history[-3:]] if history else []
+            }
         except Exception as e:
             logger.warning(f"Context analysis failed: {str(e)}")
             context_analysis = {}
-            contextual_defaults = {}
+            session_context = {}
 
-        # Enhanced extraction with context awareness
-        intent, confidence = self._classify_intent(user_query, session_id)
-        # financial_metrics = self._extract_financial_metrics(user_query, contextual_defaults)
-        # usage_metrics = self._extract_usage_metrics(user_query, contextual_defaults)
-        providers = self._extract_providers(user_query, contextual_defaults)
-        use_case = self._determine_use_case(user_query, session_id, contextual_defaults)
-        # all_metrics = {**financial_metrics, **usage_metrics}
+        # Advanced intent classification
+        intent, confidence, intent_metadata = self._advanced_intent_classification(user_query, session_context)
 
-        financial_metrics = self._extract_financial_metrics(user_query, contextual_defaults)
-        usage_metrics = self._extract_usage_metrics(user_query, contextual_defaults)
-        token_metrics = self._extract_token_metrics(user_query, contextual_defaults)
-        all_metrics = {**financial_metrics, **usage_metrics, **token_metrics}
+        # Intelligent metric extraction
+        metrics_analysis = self._intelligent_metric_extraction(user_query, intent, confidence)
 
-        logger.info(f"Intent: {intent} ({confidence:.2f}), Context Score: {context_analysis.get('context_score', 0):.2f}")
+        # Provider detection
+        detected_providers = self._intelligent_provider_detection(user_query)
+
+        # Use case classification
+        use_case = self._classify_use_case(user_query)
+
+        # Lock use case for session consistency
+        if not session_context.get("locked_use_case"):
+            self.session_manager.lock_use_case(session_id, use_case)
+
+        # Determine analysis strategy
+        analysis_strategy = self._determine_analysis_strategy(intent, confidence, metrics_analysis, session_context)
+
+        logger.info(f"Analysis Strategy: {analysis_strategy['analysis_depth']} depth, {len(analysis_strategy['primary_analysis'])} primary agents")
 
         # Initialize results structure
         results = {
@@ -592,8 +738,12 @@ class Orchestrator:
             "intent": intent,
             "confidence": confidence,
             "use_case": use_case,
-            "metrics": all_metrics,
-            "providers": providers,
+            "metrics": metrics_analysis["extracted"],
+            "smart_defaults": metrics_analysis["smart_defaults"],
+            "providers": [p["formal_name"] for p in detected_providers],
+            "provider_details": detected_providers,
+            "analysis_strategy": analysis_strategy,
+            "intent_metadata": intent_metadata,
             "context": {
                 "score": context_analysis.get('context_score', 0.0),
                 "insights": [insight.__dict__ if hasattr(insight, '__dict__') else insight
@@ -602,59 +752,23 @@ class Orchestrator:
                 "relevant_queries": len(context_analysis.get('relevant_context', []))
             },
             "analysis": {},
-            "recommendations": []
+            "recommendations": [],
+            "quality_score": 0.0
         }
 
         try:
-            # Perform analysis based on intent with rate limiting
-            # Process sequentially to avoid overwhelming APIs
+            # Execute analysis strategy
+            analysis_results = self._execute_analysis_strategy(
+                user_query, analysis_strategy, metrics_analysis, detected_providers, use_case, context_analysis
+            )
 
-            if intent == "cost_analysis":
-                logger.info("Starting cost analysis...")
-                results["analysis"]["costs"] = self._safe_api_call(
-                    self._get_cost_analysis, user_query, all_metrics, providers, use_case, contextual_defaults
-                )
+            results["analysis"] = analysis_results
 
-            elif intent == "task_analysis":
-                logger.info("Starting task analysis...")
-                results["analysis"]["tasks"] = self._safe_api_call(
-                    self._get_task_analysis, user_query, context_analysis
-                )
+            # Generate intelligent recommendations
+            results["recommendations"] = self._generate_intelligent_recommendations(results, context_analysis)
 
-            elif intent == "roi_analysis":
-                logger.info("Starting ROI analysis...")
-                results["analysis"]["roi"] = self._safe_api_call(
-                    self._get_roi_analysis, all_metrics, use_case, contextual_defaults
-                )
-
-            elif intent == "comprehensive":
-                logger.info("Starting comprehensive analysis...")
-
-                # Always do task analysis for comprehensive (it's the base analysis)
-                results["analysis"]["tasks"] = self._safe_api_call(
-                    self._get_task_analysis, user_query, context_analysis
-                )
-
-                # Add cost analysis if we have any metrics or providers
-                if financial_metrics or usage_metrics or providers:
-                    results["analysis"]["costs"] = self._safe_api_call(
-                        self._get_cost_analysis, user_query, all_metrics, providers, use_case, contextual_defaults
-                    )
-
-                # Add ROI analysis if we have sufficient financial data
-                if financial_metrics and (usage_metrics or 'budget' in financial_metrics):
-                    results["analysis"]["roi"] = self._safe_api_call(
-                        self._get_roi_analysis, all_metrics, use_case, contextual_defaults
-                    )
-
-            else:  # general intent
-                logger.info("Starting general task analysis...")
-                results["analysis"]["tasks"] = self._safe_api_call(
-                    self._get_task_analysis, user_query, context_analysis
-                )
-
-            # Generate context-aware recommendations
-            results["recommendations"] = self._generate_enhanced_recommendations(results, context_analysis)
+            # Calculate overall quality score
+            results["quality_score"] = self._calculate_analysis_quality(results)
 
             # Store query context for future reference
             try:
@@ -664,8 +778,8 @@ class Orchestrator:
                     intent=intent,
                     confidence=confidence,
                     use_case=use_case,
-                    extracted_metrics=all_metrics,
-                    providers=providers,
+                    extracted_metrics=metrics_analysis["extracted"],
+                    providers=[p["formal_name"] for p in detected_providers],
                     analysis_results=results
                 )
                 self.session_manager.add_query_context(session_id, query_context)
@@ -673,89 +787,106 @@ class Orchestrator:
                 logger.warning(f"Failed to store query context: {str(e)}")
 
         except Exception as e:
-            logger.error(f"Enhanced Orchestrator error: {str(e)}")
+            logger.error(f"Advanced Orchestrator error: {str(e)}")
             results.update({
                 "error": str(e),
-                "recommendations": ["Please provide more specific details for better analysis."]
+                "recommendations": ["Please provide more specific details for better analysis."],
+                "quality_score": 0.0
             })
 
         return results
 
-    def _get_cost_analysis(self, query: str, metrics: Dict, providers: List[str],
-                           use_case: str, contextual_defaults: Dict[str, Any] = None) -> Dict:
-        defaults = self._get_dynamic_use_case_defaults(query, use_case)
+    def _execute_analysis_strategy(self, query: str, strategy: Dict[str, Any], metrics: Dict[str, Any],
+                                 providers: List[Dict[str, Any]], use_case: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute the determined analysis strategy with intelligent agent coordination
+        """
+        analysis_results = {}
 
-        # Override with contextual defaults if available
-        if contextual_defaults:
-            for key in ['suggested_daily_requests', 'suggested_input_tokens', 'suggested_output_tokens']:
-                if key in contextual_defaults:
-                    base_key = key.replace('suggested_', '')
-                    defaults[base_key] = int(contextual_defaults[key])
-
-        # Use extracted metrics or defaults
-        requests_per_day = int(metrics.get('daily_requests', defaults["daily_requests"]))
-        input_tokens = int(metrics.get('input_tokens', defaults["input_tokens"]))
-        output_tokens = int(metrics.get('output_tokens', defaults["output_tokens"]))
-
-        models = ["gpt-4", "gpt-3.5-turbo", "claude-3-sonnet", "gemini-pro"]
-
-        # Enhanced model selection based on providers and context
-        provider_models = {
-            "OpenAI API": ["gpt-4-turbo", "gpt-4o"],
-            "Anthropic Claude": ["claude-3-opus", "claude-3-haiku"],
-            "Google Gemini": ["gemini-pro", "gemini-1.5-pro"]
+        # Prepare enhanced context for agents
+        agent_context = {
+            "metrics": metrics,
+            "providers": providers,
+            "use_case": use_case,
+            "context": context,
+            "analysis_depth": strategy["analysis_depth"]
         }
 
-        for provider in providers:
-            if provider in provider_models:
-                models.extend(provider_models[provider])
+        # Execute primary analysis
+        for agent_type in strategy["primary_analysis"]:
+            try:
+                self.rate_limiter.wait_if_needed()
+
+                if agent_type == "cost":
+                    analysis_results["costs"] = self._enhanced_cost_analysis(query, agent_context)
+                elif agent_type == "roi":
+                    analysis_results["roi"] = self._enhanced_roi_analysis(query, agent_context)
+                elif agent_type == "task":
+                    analysis_results["tasks"] = self._enhanced_task_analysis(query, agent_context)
+
+            except Exception as e:
+                logger.error(f"Primary analysis failed for {agent_type}: {str(e)}")
+                analysis_results[f"{agent_type}_error"] = str(e)
+
+        # Execute secondary analysis if primary was successful
+        if len(analysis_results) > 0 and not any("_error" in key for key in analysis_results.keys()):
+            for agent_type in strategy["secondary_analysis"]:
+                try:
+                    self.rate_limiter.wait_if_needed()
+
+                    if agent_type == "cost" and "costs" not in analysis_results:
+                        analysis_results["costs"] = self._enhanced_cost_analysis(query, agent_context)
+                    elif agent_type == "roi" and "roi" not in analysis_results:
+                        analysis_results["roi"] = self._enhanced_roi_analysis(query, agent_context)
+                    elif agent_type == "task" and "tasks" not in analysis_results:
+                        analysis_results["tasks"] = self._enhanced_task_analysis(query, agent_context)
+
+                except Exception as e:
+                    logger.warning(f"Secondary analysis failed for {agent_type}: {str(e)}")
+
+        return analysis_results
+
+    def _enhanced_cost_analysis(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhanced cost analysis with intelligent defaults and provider optimization"""
+        metrics = context["metrics"]
+        providers = context["providers"]
+        use_case = context["use_case"]
+
+        # Get smart defaults
+        smart_defaults = metrics.get("smart_defaults", {})
+        extracted = metrics.get("extracted", {})
+
+        # Determine optimal parameters
+        daily_requests = int(extracted.get('daily_requests') or smart_defaults.get('suggested_daily_requests', 1000))
+        input_tokens = int(extracted.get('input_tokens') or smart_defaults.get('suggested_input_tokens', 200))
+        output_tokens = int(extracted.get('output_tokens') or smart_defaults.get('suggested_output_tokens', 250))
+
+        # Enhanced model selection based on use case and providers
+        models = self._select_optimal_models(use_case, providers, daily_requests)
 
         return self.cost_agent.calculate_llm_costs(
             use_case=use_case,
-            requests_per_day=requests_per_day,
+            requests_per_day=daily_requests,
             avg_input_tokens=input_tokens,
             avg_output_tokens=output_tokens,
-            models=list(set(models))
+            models=models
         )
 
-    def _get_task_analysis(self, query: str, context_analysis: Dict[str, Any]) -> Dict:
-        """Enhanced task analysis with rate limiting protection"""
-        task_result = self.task_agent.analyze_workflow(query)
+    def _enhanced_roi_analysis(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhanced ROI analysis with intelligent benefit estimation"""
+        metrics = context["metrics"]
+        use_case = context["use_case"]
+        smart_defaults = metrics.get("smart_defaults", {})
+        extracted = metrics.get("extracted", {})
 
-        # Enhance with context insights
-        if context_analysis and context_analysis.get('insights'):
-            try:
-                task_result['context_insights'] = [
-                    insight for insight in context_analysis['insights']
-                    if isinstance(insight, dict) and insight.get('type') in ['pattern', 'evolution']
-                ]
-            except Exception as e:
-                logger.warning(f"Failed to add context insights: {str(e)}")
+        # Determine budget and benefits intelligently
+        budget = extracted.get('budget') or smart_defaults.get('suggested_budget', 50000)
+        hours_saved = extracted.get('hours_per_week', 40) * 50  # Annual hours
+        team_size = extracted.get('team_size') or smart_defaults.get('suggested_team_size', 10)
 
-        return task_result.get("analysis", task_result) if isinstance(task_result, dict) else task_result
-
-    def _get_roi_analysis(self, metrics: Dict, use_case: str, contextual_defaults: Dict[str, Any] = None) -> Dict:
-        """Enhanced ROI analysis with rate limiting protection"""
-        # Determine budget with context awareness
-        budget = metrics.get('budget', metrics.get('monthly_spend', 10000))
-        if 'monthly_spend' in metrics:
-            budget = metrics['monthly_spend'] * 12
-        elif contextual_defaults and 'suggested_budget' in contextual_defaults:
-            budget = contextual_defaults['suggested_budget']
-
-        # Enhanced benefit estimation based on context
-        hours_saved = metrics.get('hours_saved', 1000)
-        if contextual_defaults and 'suggested_hours_saved' in contextual_defaults:
-            hours_saved = contextual_defaults['suggested_hours_saved']
-
-        hourly_rate = 50
-
-        annual_benefits = {
-            "Labor Cost Savings": hours_saved * hourly_rate,
-            "Efficiency Gains": budget * 0.3,
-            "Error Reduction": budget * 0.15,
-            "Speed Improvements": budget * 0.2
-        }
+        # Calculate intelligent benefits based on use case
+        hourly_rate = 75  # Enhanced default rate
+        annual_benefits = self._calculate_intelligent_benefits(use_case, hours_saved, team_size, hourly_rate)
 
         return self.roi_agent.calculate_roi(
             project_name=f"AI Implementation - {use_case}",
@@ -763,78 +894,154 @@ class Orchestrator:
             annual_benefits=annual_benefits
         )
 
-    def _generate_enhanced_recommendations(self, results: Dict[str, Any],
-                                         context_analysis: Dict[str, Any]) -> List[str]:
-        """Generate enhanced recommendations with context awareness"""
+    def _enhanced_task_analysis(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhanced task analysis with context-aware insights"""
+        return self.task_agent.analyze_workflow(query)
+
+    def _select_optimal_models(self, use_case: str, providers: List[Dict[str, Any]], daily_requests: int) -> List[str]:
+        """Select optimal models based on use case, providers, and volume"""
+        base_models = ["gpt-4o", "gpt-3.5-turbo", "claude-3-sonnet", "gemini-pro"]
+
+        # Add provider-specific models
+        provider_models = {
+            "OpenAI API": ["gpt-4o-mini", "gpt-4-turbo"],
+            "Anthropic Claude": ["claude-3-opus", "claude-3-haiku"],
+            "Google Gemini": ["gemini-1.5-pro", "gemini-1.5-flash"]
+        }
+
+        for provider in providers:
+            provider_name = provider.get("formal_name", "")
+            if provider_name in provider_models:
+                base_models.extend(provider_models[provider_name])
+
+        # Optimize for volume
+        if daily_requests > 10000:
+            # High volume - prioritize cost-effective models
+            return ["gpt-4o-mini", "claude-3-haiku", "gemini-1.5-flash"] + base_models
+        elif daily_requests < 100:
+            # Low volume - prioritize quality
+            return ["gpt-4o", "claude-3-opus", "gemini-1.5-pro"] + base_models
+
+        return list(set(base_models))  # Remove duplicates
+
+    def _calculate_intelligent_benefits(self, use_case: str, hours_saved: float, team_size: int, hourly_rate: float) -> Dict[str, float]:
+        """Calculate intelligent benefits based on use case characteristics"""
+        base_labor_savings = hours_saved * hourly_rate
+
+        # Use case specific multipliers
+        use_case_benefits = {
+            "customer_support": {
+                "Labor Cost Savings": base_labor_savings,
+                "Customer Satisfaction Improvement": base_labor_savings * 0.3,
+                "24/7 Availability Value": base_labor_savings * 0.4,
+                "Error Reduction": base_labor_savings * 0.2
+            },
+            "content_generation": {
+                "Labor Cost Savings": base_labor_savings,
+                "Increased Output Volume": base_labor_savings * 0.5,
+                "Quality Consistency": base_labor_savings * 0.2,
+                "Speed to Market": base_labor_savings * 0.3
+            },
+            "data_analysis": {
+                "Labor Cost Savings": base_labor_savings,
+                "Faster Decision Making": base_labor_savings * 0.4,
+                "Improved Accuracy": base_labor_savings * 0.3,
+                "Scalable Insights": base_labor_savings * 0.2
+            },
+            "document_processing": {
+                "Labor Cost Savings": base_labor_savings,
+                "Processing Speed Improvement": base_labor_savings * 0.6,
+                "Error Reduction": base_labor_savings * 0.4,
+                "Compliance Improvement": base_labor_savings * 0.2
+            }
+        }
+
+        return use_case_benefits.get(use_case, {
+            "Labor Cost Savings": base_labor_savings,
+            "Efficiency Gains": base_labor_savings * 0.3,
+            "Quality Improvements": base_labor_savings * 0.2,
+            "Scalability Benefits": base_labor_savings * 0.1
+        })
+
+    def _generate_intelligent_recommendations(self, results: Dict[str, Any], context_analysis: Dict[str, Any]) -> List[str]:
+        """Generate intelligent, context-aware recommendations"""
         recommendations = []
 
-        # Context-aware recommendations
-        try:
-            if context_analysis and hasattr(self.context_analyzer, 'get_context_based_recommendations'):
-                context_recs = self.context_analyzer.get_context_based_recommendations(
-                    results["query"], context_analysis
-                )
-                if context_recs:
-                    recommendations.extend(context_recs)
-        except Exception as e:
-            logger.warning(f"Failed to get context-based recommendations: {str(e)}")
+        intent = results.get("intent", "")
+        confidence = results.get("confidence", 0.0)
+        quality_score = results.get("quality_score", 0.0)
+        analysis = results.get("analysis", {})
 
-        # Analysis-based recommendations
-        if "costs" in results["analysis"] and isinstance(results["analysis"]["costs"], dict):
-            cost_data = results["analysis"]["costs"].get("cost_breakdown", {})
-            if cost_data:
-                try:
-                    cheapest = min(cost_data.items(), key=lambda x: x[1].get("monthly_cost", float('inf')))
-                    recommendations.append(
-                        f"💰 **Most Cost-Effective**: {cheapest[0]} at ${cheapest[1].get('monthly_cost', 0):,.0f}/month"
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to generate cost recommendation: {str(e)}")
+        # Quality-based recommendations
+        if quality_score > 0.8:
+            recommendations.append("🎯 **High-Quality Analysis**: Comprehensive insights generated with high confidence")
+        elif quality_score < 0.5:
+            recommendations.append("⚠️ **Limited Data**: Consider providing more specific details for enhanced analysis")
 
-        if "roi" in results["analysis"] and isinstance(results["analysis"]["roi"], dict):
-            roi_data = results["analysis"]["roi"].get("basic_metrics", {})
-            payback = roi_data.get("payback_period_years", 0)
-            roi_pct = roi_data.get("roi_percentage", 0)
+        # Intent-specific recommendations
+        if intent == "cost_optimization":
+            if cost_data := analysis.get("costs", {}).get("cost_breakdown"):
+                cheapest = min(cost_data.items(), key=lambda x: x[1].get("monthly_cost", float('inf')))
+                recommendations.append(f"💰 **Cost Leader**: {cheapest[0]} offers lowest cost at ${cheapest[1].get('monthly_cost', 0):,.0f}/month")
 
-            if payback > 0:
-                try:
-                    if payback < 1:
-                        recommendations.append(
-                            f"🚀 **Excellent ROI**: {roi_pct:.0f}% return with {payback*12:.1f} month payback"
-                        )
-                    else:
-                        recommendations.append(
-                            f"📈 **Strong ROI**: {roi_pct:.0f}% return with {payback:.1f} year payback"
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to generate ROI recommendation: {str(e)}")
+        if intent == "roi_analysis":
+            if roi_data := analysis.get("roi", {}).get("key_metrics"):
+                roi_pct = roi_data.get("roi_percentage", 0)
+                payback = roi_data.get("payback_period_months", 0)
+                if roi_pct > 200:
+                    recommendations.append(f"🚀 **Excellent ROI**: {roi_pct:.0f}% return with {payback:.1f} month payback")
+                elif roi_pct > 100:
+                    recommendations.append(f"📈 **Strong ROI**: {roi_pct:.0f}% return with {payback:.1f} month payback")
 
-        # Context-specific recommendations
-        context_score = results["context"]["score"]
-        if context_score > 0.5:
-            recommendations.append(
-                f"🔗 **Context Continuity**: Building on {results['context']['relevant_queries']} related queries"
-            )
+        # Context-based recommendations
+        if context_analysis.get("context_score", 0) > 0.6:
+            recommendations.append(f"🧠 **Context Continuity**: Building on {results['context']['relevant_queries']} related queries")
 
-        # Intent-based recommendations
-        if results["intent"] == "comprehensive":
-            recommendations.append("📊 **Next Steps**: Consider a phased implementation starting with highest ROI tasks")
-        elif results["confidence"] < 0.5:
-            recommendations.append("❓ **Clarification**: Provide more specific requirements for targeted recommendations")
+        # Strategy recommendations
+        strategy = results.get("analysis_strategy", {})
+        if strategy.get("analysis_depth") == "comprehensive":
+            recommendations.append("📊 **Comprehensive Analysis**: Multi-dimensional assessment completed")
 
-        # Rate limiting awareness
-        recommendations.append("⚡ **API Optimization**: Requests are automatically rate-limited for optimal performance")
+        # Provider recommendations
+        if provider_details := results.get("provider_details"):
+            if len(provider_details) > 1:
+                recommendations.append("🔄 **Multi-Provider Strategy**: Consider hybrid approach for optimal cost-performance")
 
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_recommendations = []
-        for rec in recommendations:
-            if rec not in seen:
-                seen.add(rec)
-                unique_recommendations.append(rec)
+        return recommendations[:5]  # Limit to top 5
 
-        return unique_recommendations[:6]  # Limit to top 6 recommendations
+    def _calculate_analysis_quality(self, results: Dict[str, Any]) -> float:
+        """Calculate overall analysis quality score"""
+        quality_factors = []
 
+        # Intent confidence
+        quality_factors.append(results.get("confidence", 0.0))
+
+        # Data completeness
+        metrics_count = len(results.get("metrics", {}))
+        data_completeness = min(1.0, metrics_count / 5)  # Normalize to 5 metrics
+        quality_factors.append(data_completeness)
+
+        # Analysis breadth
+        analysis_sections = len(results.get("analysis", {}))
+        analysis_breadth = min(1.0, analysis_sections / 3)  # Normalize to 3 sections
+        quality_factors.append(analysis_breadth)
+
+        # Context relevance
+        context_score = results.get("context", {}).get("score", 0.0)
+        quality_factors.append(context_score)
+
+        # Provider coverage
+        provider_count = len(results.get("providers", []))
+        provider_coverage = min(1.0, provider_count / 3)  # Normalize to 3 providers
+        quality_factors.append(provider_coverage)
+
+        # Calculate weighted average
+        weights = [0.3, 0.25, 0.2, 0.15, 0.1]  # Intent confidence weighted highest
+        quality_score = sum(factor * weight for factor, weight in zip(quality_factors, weights))
+
+        return round(quality_score, 2)
+
+    # Additional helper methods for session management
     def get_session_summary(self, session_id: str) -> Dict[str, Any]:
         """Get comprehensive session summary with context insights"""
         try:
@@ -885,7 +1092,5 @@ class Orchestrator:
                 "time_since_last_call": current_time - self.rate_limiter.last_call_time
             }
 
-    # Backward compatibility - keep original method name
-    def analyze_request_legacy(self, user_query: str, session_id: Optional[str] = None) -> Dict[str, Any]:
-        """Legacy method for backward compatibility"""
-        return self.analyze_request(user_query, session_id)
+# Maintain backward compatibility
+Orchestrator = AdvancedOrchestrator

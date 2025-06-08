@@ -1,105 +1,23 @@
 """
-Export functionality for analysis results
+Fixed export functionality with unique keys to prevent Streamlit conflicts
 """
 import streamlit as st
 import json
 import pandas as pd
 from typing import Dict, Any, List, Tuple
 from datetime import datetime
+import io
+import base64
+import uuid
 
 
-def add_export_buttons(analysis: Dict[str, Any]):
-    """Add export buttons for analysis results"""
-    st.markdown("### 📥 Export Analysis Results")
-
-    col1, col2, col3 = st.columns(3)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-    export_configs = [
-        (col1, "📊 Download CSV", "export_csv_btn", convert_to_csv, "csv", "text/csv"),
-        (col2, "📋 Download JSON", "export_json_btn", lambda x: json.dumps(x, indent=2, default=str), "json", "application/json"),
-        (col3, "📧 Generate Summary", "export_summary_btn", generate_summary, None, None)
-    ]
-
-    for col, label, key, converter, file_ext, mime_type in export_configs:
-        with col:
-            if st.button(label, key=key):
-                data = converter(analysis)
-
-                if file_ext:  # Download button
-                    st.download_button(
-                        label=f"💾 Download {file_ext.upper()} File",
-                        data=data,
-                        file_name=f"ai_analysis_{timestamp}.{file_ext}",
-                        mime=mime_type
-                    )
-                else:  # Text area for summary
-                    st.text_area("📝 Analysis Summary", data, height=200)
+def generate_unique_suffix() -> str:
+    """Generate unique suffix for component keys"""
+    return f"{datetime.now().strftime('%H%M%S')}_{uuid.uuid4().hex[:6]}"
 
 
-def _extract_cost_data(analysis: Dict[str, Any]) -> List[List[str]]:
-    """Extract cost data for CSV export"""
-    rows = []
-    cost_data = analysis.get("analysis", {}).get("costs", {}).get("cost_breakdown")
-
-    if not cost_data:
-        return rows
-
-    rows.extend([
-        ["Cost Analysis", ""],
-        ["Model", "Monthly Cost", "Daily Cost", "Cost per Request", "Provider"]
-    ])
-
-    for model, costs in cost_data.items():
-        if isinstance(costs, dict):
-            rows.append([
-                model,
-                f"${costs.get('monthly_cost', 0):.2f}",
-                f"${costs.get('daily_cost', 0):.2f}",
-                f"${costs.get('cost_per_request', 0):.4f}",
-                costs.get('provider', 'Unknown')
-            ])
-
-    rows.append(["", ""])
-    return rows
-
-
-def _extract_roi_data(analysis: Dict[str, Any]) -> List[List[str]]:
-    """Extract ROI data for CSV export"""
-    rows = []
-    roi_data = analysis.get("analysis", {}).get("roi", {}).get("basic_metrics")
-
-    if not roi_data:
-        return rows
-
-    rows.extend([
-        ["ROI Analysis", ""],
-        ["Metric", "Value"],
-        ["ROI Percentage", f"{roi_data.get('roi_percentage', 0)}%"],
-        ["Payback Period", f"{roi_data.get('payback_period_years', 0):.1f} years"],
-        ["Net Benefit", f"${roi_data.get('net_benefit', 0):,.0f}"],
-        ["", ""]
-    ])
-
-    return rows
-
-
-def _extract_recommendations(analysis: Dict[str, Any]) -> List[List[str]]:
-    """Extract recommendations for CSV export"""
-    rows = []
-    recommendations = analysis.get("recommendations")
-
-    if not recommendations:
-        return rows
-
-    rows.append(["Recommendations", ""])
-    rows.extend([f"Recommendation {i}", rec] for i, rec in enumerate(recommendations, 1))
-
-    return rows
-
-
-def convert_to_csv(analysis: Dict[str, Any]) -> str:
-    """Convert analysis to CSV format"""
+def safe_convert_to_csv(analysis: Dict[str, Any]) -> str:
+    """Safely convert analysis to CSV format with ALL sections included"""
     try:
         rows = [
             ["Analysis Type", analysis.get("intent", "general")],
@@ -108,37 +26,150 @@ def convert_to_csv(analysis: Dict[str, Any]) -> str:
             ["", ""]  # Empty row
         ]
 
-        # Add all data sections
-        for extractor in [_extract_cost_data, _extract_roi_data, _extract_recommendations]:
-            rows.extend(extractor(analysis))
+        # Add recommendations
+        if recommendations := analysis.get("recommendations"):
+            rows.append(["RECOMMENDATIONS", ""])
+            for i, rec in enumerate(recommendations, 1):
+                # Clean recommendation text
+                clean_rec = str(rec).replace('\n', ' ').replace('\r', ' ').replace('*', '').replace('#', '')
+                rows.append([f"Recommendation {i}", clean_rec])
+            rows.append(["", ""])
 
-        return pd.DataFrame(rows).to_csv(index=False, header=False)
+        # Add ALL analysis sections
+        analysis_data = analysis.get("analysis", {})
+
+        # Cost analysis section
+        if cost_data := analysis_data.get("costs"):
+            rows.append(["COST ANALYSIS", ""])
+
+            # Volume metrics
+            if vm := cost_data.get("volume_metrics"):
+                rows.append(["Volume Metrics", ""])
+                rows.append(["Daily Requests", f"{vm.get('daily_requests', 0):,}"])
+                rows.append(["Monthly Requests", f"{vm.get('monthly_requests', 0):,}"])
+                rows.append(["Input Tokens", f"{vm.get('avg_input_tokens', 0):,}"])
+                rows.append(["Output Tokens", f"{vm.get('avg_output_tokens', 0):,}"])
+                rows.append(["", ""])
+
+            # Cost breakdown
+            if breakdown := cost_data.get("cost_breakdown"):
+                rows.append(["Model Cost Comparison", ""])
+                rows.append(["Model", "Monthly Cost", "Daily Cost", "Cost per Request", "Provider", "Tier"])
+                for model, costs in breakdown.items():
+                    if isinstance(costs, dict) and "monthly_cost" in costs:
+                        rows.append([
+                            str(model),
+                            f"${costs.get('monthly_cost', 0):.2f}",
+                            f"${costs.get('daily_cost', 0):.2f}",
+                            f"${costs.get('cost_per_request', 0):.4f}",
+                            str(costs.get('provider', 'Unknown')),
+                            str(costs.get('tier', 'Unknown'))
+                        ])
+                rows.append(["", ""])
+
+            # Cost analysis text
+            if cost_analysis := cost_data.get("analysis"):
+                rows.append(["Cost Analysis Details", clean_text_for_csv(cost_analysis)])
+                rows.append(["", ""])
+
+        # ROI analysis section
+        if roi_data := analysis_data.get("roi"):
+            rows.append(["ROI ANALYSIS", ""])
+
+            # Financial metrics
+            if metrics := (roi_data.get("basic_metrics") or roi_data.get("key_metrics") or roi_data.get("financial_metrics")):
+                rows.append(["Financial Metrics", ""])
+                for key, value in metrics.items():
+                    if isinstance(value, (int, float)):
+                        if "percentage" in key:
+                            rows.append([key.replace("_", " ").title(), f"{value}%"])
+                        elif any(term in key for term in ["cost", "benefit", "npv"]):
+                            rows.append([key.replace("_", " ").title(), f"${value:,.0f}"])
+                        else:
+                            rows.append([key.replace("_", " ").title(), str(value)])
+                rows.append(["", ""])
+
+            # ROI analysis text
+            if roi_analysis := roi_data.get("detailed_analysis"):
+                rows.append(["ROI Analysis Details", clean_text_for_csv(roi_analysis)])
+                rows.append(["", ""])
+
+        # Task analysis section
+        if tasks_data := analysis_data.get("tasks"):
+            rows.append(["TASK ANALYSIS", ""])
+            if isinstance(tasks_data, dict):
+                if detailed := tasks_data.get("detailed_analysis"):
+                    rows.append(["Task Analysis Details", clean_text_for_csv(detailed)])
+                elif auto_analysis := tasks_data.get("automated_analysis"):
+                    if aa := auto_analysis.get("automation_analysis"):
+                        rows.append(["Automation Potential", f"{aa.get('automation_potential', 0):.0%}"])
+                        rows.append(["Weekly Time Saved", f"{aa.get('weekly_time_saved', 0):.1f} hours"])
+                        rows.append(["Annual Savings", f"${aa.get('annual_cost_savings', 0):,.0f}"])
+            elif isinstance(tasks_data, str):
+                rows.append(["Task Analysis Details", clean_text_for_csv(tasks_data)])
+            rows.append(["", ""])
+
+        # Infrastructure analysis section
+        if infra_data := analysis_data.get("infrastructure"):
+            rows.append(["INFRASTRUCTURE ANALYSIS", ""])
+            rows.append(["Current Monthly Spend", f"${infra_data.get('current_spend', 0):,.0f}"])
+            rows.append(["Target Monthly Spend", f"${infra_data.get('target_spend', 0):,.0f}"])
+            rows.append(["Potential Monthly Savings", f"${infra_data.get('potential_savings', 0):,.0f}"])
+            rows.append(["Annual Savings", f"${infra_data.get('annual_savings', 0):,.0f}"])
+            if detailed := infra_data.get("detailed_analysis"):
+                rows.append(["Infrastructure Analysis Details", clean_text_for_csv(detailed)])
+            rows.append(["", ""])
+
+        # Extracted metrics
+        if metrics := analysis.get("metrics"):
+            rows.append(["EXTRACTED METRICS", ""])
+            for key, value in metrics.items():
+                if isinstance(value, (int, float)):
+                    if any(term in key for term in ["spend", "budget", "cost"]):
+                        rows.append([key.replace("_", " ").title(), f"${value:,.0f}"])
+                    elif "percentage" in key or "reduction" in key:
+                        rows.append([key.replace("_", " ").title(), f"{value:.1%}"])
+                    else:
+                        rows.append([key.replace("_", " ").title(), f"{value:,}"])
+                else:
+                    rows.append([key.replace("_", " ").title(), str(value)])
+            rows.append(["", ""])
+
+        # Convert to DataFrame and then CSV
+        df = pd.DataFrame(rows)
+        return df.to_csv(index=False, header=False)
 
     except Exception as e:
         st.error(f"Error generating CSV: {e}")
-        return "Error generating CSV data"
+        # Return basic CSV with error info
+        error_df = pd.DataFrame([
+            ["Error", "Failed to generate full CSV"],
+            ["Timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+            ["Analysis Type", analysis.get("intent", "unknown")]
+        ])
+        return error_df.to_csv(index=False, header=False)
 
 
-def _get_cheapest_model(breakdown: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
-    """Find the cheapest model from cost breakdown"""
-    return min(
-        breakdown.items(),
-        key=lambda x: x[1].get("monthly_cost", float('inf')) if isinstance(x[1], dict) else float('inf')
-    )
+def clean_text_for_csv(text: str) -> str:
+    """Clean text for CSV export by removing problematic characters"""
+    if not isinstance(text, str):
+        text = str(text)
+
+    # Remove markdown formatting
+    text = text.replace('**', '')  # Bold
+    text = text.replace('*', '')   # Italic
+    text = text.replace('#', '')   # Headers
+    text = text.replace('`', '')   # Code
+    text = text.replace('\n', ' ') # Newlines
+    text = text.replace('\r', ' ') # Carriage returns
+    text = text.replace('"', "'")  # Quotes
+
+    # Limit length for CSV
+    return text[:500] + "..." if len(text) > 500 else text
 
 
-def _add_section(parts: List[str], title: str, content: List[str]):
-    """Add a section to summary parts"""
-    parts.extend([
-        f"{title}:",
-        "-" * len(title),
-        *content,
-        ""
-    ])
-
-
-def generate_summary(analysis: Dict[str, Any]) -> str:
-    """Generate a text summary of the analysis"""
+def safe_generate_summary(analysis: Dict[str, Any]) -> str:
+    """Generate comprehensive text summary with ALL sections"""
     try:
         summary_parts = [
             "AI COST OPTIMIZATION ANALYSIS SUMMARY",
@@ -151,52 +182,214 @@ def generate_summary(analysis: Dict[str, Any]) -> str:
 
         # Key recommendations
         if recommendations := analysis.get("recommendations"):
-            _add_section(summary_parts, "KEY RECOMMENDATIONS",
-                        [f"{i}. {rec}" for i, rec in enumerate(recommendations, 1)])
+            summary_parts.extend([
+                "KEY RECOMMENDATIONS:",
+                "-" * 20
+            ])
+            for i, rec in enumerate(recommendations, 1):
+                clean_rec = clean_text_for_csv(rec)[:200]
+                summary_parts.append(f"{i}. {clean_rec}")
+            summary_parts.append("")
 
+        # Analysis sections
         analysis_data = analysis.get("analysis", {})
 
         # Cost analysis
         if cost_data := analysis_data.get("costs"):
-            content = []
+            summary_parts.extend([
+                "COST ANALYSIS:",
+                "-" * 15
+            ])
+
+            if vm := cost_data.get("volume_metrics"):
+                summary_parts.append(f"Daily Requests: {vm.get('daily_requests', 0):,}")
+                summary_parts.append(f"Monthly Requests: {vm.get('monthly_requests', 0):,}")
+
             if breakdown := cost_data.get("cost_breakdown"):
-                cheapest_model, cheapest_costs = _get_cheapest_model(breakdown)
-                if isinstance(cheapest_costs, dict):
-                    content.extend([
-                        f"Most cost-effective model: {cheapest_model}",
-                        f"Monthly cost: ${cheapest_costs.get('monthly_cost', 0):,.2f}"
-                    ])
-            _add_section(summary_parts, "COST ANALYSIS", content)
+                cheapest_model = min(
+                    breakdown.items(),
+                    key=lambda x: x[1].get("monthly_cost", float('inf')) if isinstance(x[1], dict) else float('inf')
+                )
+                if isinstance(cheapest_model[1], dict):
+                    summary_parts.append(f"Most cost-effective: {cheapest_model[0]} at ${cheapest_model[1].get('monthly_cost', 0):,.2f}/month")
+            summary_parts.append("")
 
         # ROI analysis
         if roi_data := analysis_data.get("roi"):
-            if metrics := roi_data.get("basic_metrics", {}):
-                content = [
-                    f"ROI: {metrics.get('roi_percentage', 0)}%",
-                    f"Payback: {metrics.get('payback_period_years', 0):.1f} years",
-                    f"Net Benefit: ${metrics.get('net_benefit', 0):,.0f}"
-                ]
-                _add_section(summary_parts, "ROI ANALYSIS", content)
+            summary_parts.extend([
+                "ROI ANALYSIS:",
+                "-" * 13
+            ])
+            if metrics := (roi_data.get("basic_metrics") or roi_data.get("key_metrics") or roi_data.get("financial_metrics")):
+                roi_pct = metrics.get('roi_percentage', 0)
+                payback = metrics.get('payback_period_years', 0)
+                net_benefit = metrics.get('net_benefit', 0)
+                summary_parts.extend([
+                    f"ROI: {roi_pct}%",
+                    f"Payback: {payback:.1f} years",
+                    f"Net Benefit: ${net_benefit:,.0f}"
+                ])
+            summary_parts.append("")
 
-        # Infrastructure savings
+        # Task analysis
+        if tasks_data := analysis_data.get("tasks"):
+            summary_parts.extend([
+                "TASK ANALYSIS:",
+                "-" * 14
+            ])
+            if isinstance(tasks_data, dict) and tasks_data.get("automated_analysis"):
+                aa = tasks_data["automated_analysis"].get("automation_analysis", {})
+                summary_parts.extend([
+                    f"Automation Potential: {aa.get('automation_potential', 0):.0%}",
+                    f"Weekly Time Saved: {aa.get('weekly_time_saved', 0):.1f} hours",
+                    f"Annual Savings: ${aa.get('annual_cost_savings', 0):,.0f}"
+                ])
+            summary_parts.append("")
+
+        # Infrastructure analysis
         if infra_data := analysis_data.get("infrastructure"):
-            content = [
+            summary_parts.extend([
+                "INFRASTRUCTURE OPTIMIZATION:",
+                "-" * 26,
                 f"Current spend: ${infra_data.get('current_spend', 0):,.0f}/month",
                 f"Potential savings: ${infra_data.get('potential_savings', 0):,.0f}/month",
-                f"Annual savings: ${infra_data.get('annual_savings', 0):,.0f}"
-            ]
-            _add_section(summary_parts, "INFRASTRUCTURE OPTIMIZATION", content)
+                f"Annual savings: ${infra_data.get('annual_savings', 0):,.0f}",
+                ""
+            ])
 
         # Next steps
-        _add_section(summary_parts, "NEXT STEPS", [
+        summary_parts.extend([
+            "NEXT STEPS:",
+            "-" * 11,
             "1. Review detailed analysis in each section",
             "2. Prioritize recommendations based on your constraints",
             "3. Begin with quick wins for immediate impact",
             "4. Plan phased implementation approach",
-            "5. Set up monitoring and measurement systems"
+            "5. Set up monitoring and measurement systems",
+            ""
         ])
 
         return "\n".join(summary_parts)
 
     except Exception as e:
-        return f"Error generating summary: {e}"
+        return f"Error generating summary: {e}\n\nBasic Info:\nAnalysis Type: {analysis.get('intent', 'unknown')}\nGenerated: {datetime.now()}"
+
+
+def add_export_buttons(analysis: Dict[str, Any]):
+    """FIXED: Add comprehensive export buttons with unique keys to prevent conflicts"""
+    st.markdown("### 📥 Export Analysis Results")
+
+    if not analysis:
+        st.warning("No analysis data available for export.")
+        return
+
+    # FIXED: Generate unique suffix for this specific analysis/message
+    unique_suffix = generate_unique_suffix()
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    col1, col2, col3 = st.columns(3)
+
+    # CSV Export - FIXED: Unique key
+    with col1:
+        if st.button("📊 Export CSV", key=f"export_csv_btn_{unique_suffix}", use_container_width=True):
+            try:
+                csv_data = safe_convert_to_csv(analysis)
+                st.download_button(
+                    label="💾 Download CSV File",
+                    data=csv_data,
+                    file_name=f"ai_analysis_{timestamp}.csv",
+                    mime="text/csv",
+                    key=f"csv_download_{unique_suffix}"
+                )
+                st.success("✅ CSV export ready! Includes ALL analysis sections.")
+            except Exception as e:
+                st.error(f"CSV export failed: {e}")
+
+    # JSON Export - FIXED: Unique key
+    with col2:
+        if st.button("📋 Export JSON", key=f"export_json_btn_{unique_suffix}", use_container_width=True):
+            try:
+                # Clean the analysis data for JSON serialization
+                clean_analysis = clean_for_json(analysis)
+                json_data = json.dumps(clean_analysis, indent=2, default=str)
+                st.download_button(
+                    label="💾 Download JSON File",
+                    data=json_data,
+                    file_name=f"ai_analysis_{timestamp}.json",
+                    mime="application/json",
+                    key=f"json_download_{unique_suffix}"
+                )
+                st.success("✅ JSON export ready! Complete analysis data.")
+            except Exception as e:
+                st.error(f"JSON export failed: {e}")
+
+    # Summary Export - FIXED: Unique key
+    with col3:
+        if st.button("📧 Generate Summary", key=f"export_summary_btn_{unique_suffix}", use_container_width=True):
+            try:
+                summary_data = safe_generate_summary(analysis)
+                st.download_button(
+                    label="💾 Download Summary",
+                    data=summary_data,
+                    file_name=f"ai_summary_{timestamp}.txt",
+                    mime="text/plain",
+                    key=f"summary_download_{unique_suffix}"
+                )
+                st.success("✅ Summary export ready! Comprehensive overview.")
+            except Exception as e:
+                st.error(f"Summary export failed: {e}")
+
+    # FIXED: Show preview with unique keys
+    if st.checkbox("👀 Show Export Preview", key=f"show_preview_checkbox_{unique_suffix}"):
+        tab1, tab2, tab3 = st.tabs(["📊 CSV Preview", "📋 JSON Preview", "📧 Summary Preview"])
+
+        with tab1:
+            try:
+                csv_preview = safe_convert_to_csv(analysis)
+                st.text_area(
+                    "CSV Data",
+                    csv_preview[:1000] + "..." if len(csv_preview) > 1000 else csv_preview,
+                    height=200,
+                    key=f"csv_preview_{unique_suffix}"
+                )
+            except Exception as e:
+                st.error(f"CSV preview error: {e}")
+
+        with tab2:
+            try:
+                clean_analysis = clean_for_json(analysis)
+                json_preview = json.dumps(clean_analysis, indent=2, default=str)
+                st.text_area(
+                    "JSON Data",
+                    json_preview[:1000] + "..." if len(json_preview) > 1000 else json_preview,
+                    height=200,
+                    key=f"json_preview_{unique_suffix}"
+                )
+            except Exception as e:
+                st.error(f"JSON preview error: {e}")
+
+        with tab3:
+            try:
+                summary_preview = safe_generate_summary(analysis)
+                st.text_area(
+                    "Summary",
+                    summary_preview[:1000] + "..." if len(summary_preview) > 1000 else summary_preview,
+                    height=200,
+                    key=f"summary_preview_{unique_suffix}"
+                )
+            except Exception as e:
+                st.error(f"Summary preview error: {e}")
+
+
+def clean_for_json(obj: Any) -> Any:
+    """Recursively clean object for JSON serialization"""
+    if isinstance(obj, dict):
+        return {k: clean_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_for_json(item) for item in obj]
+    elif hasattr(obj, '__dict__'):
+        return clean_for_json(obj.__dict__)
+    elif isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    else:
+        return str(obj)
