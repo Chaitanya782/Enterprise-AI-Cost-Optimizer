@@ -1,5 +1,5 @@
 """
-Fixed export functionality with Streamlit compatibility and proper text handling
+Fixed export functionality with unique keys to prevent Streamlit conflicts
 """
 import streamlit as st
 import json
@@ -8,6 +8,12 @@ from typing import Dict, Any, List, Tuple
 from datetime import datetime
 import io
 import base64
+import uuid
+
+
+def generate_unique_suffix() -> str:
+    """Generate unique suffix for component keys"""
+    return f"{datetime.now().strftime('%H%M%S')}_{uuid.uuid4().hex[:6]}"
 
 
 def safe_convert_to_csv(analysis: Dict[str, Any]) -> str:
@@ -270,20 +276,22 @@ def safe_generate_summary(analysis: Dict[str, Any]) -> str:
 
 
 def add_export_buttons(analysis: Dict[str, Any]):
-    """FIXED: Add comprehensive export buttons without problematic Streamlit features"""
+    """FIXED: Add comprehensive export buttons with unique keys to prevent conflicts"""
     st.markdown("### 📥 Export Analysis Results")
 
     if not analysis:
         st.warning("No analysis data available for export.")
         return
 
+    # FIXED: Generate unique suffix for this specific analysis/message
+    unique_suffix = generate_unique_suffix()
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     col1, col2, col3 = st.columns(3)
 
-    # CSV Export
+    # CSV Export - FIXED: Unique key
     with col1:
-        if st.button("📊 Export CSV", key="export_csv_btn", use_container_width=True):
+        if st.button("📊 Export CSV", key=f"export_csv_btn_{unique_suffix}", use_container_width=True):
             try:
                 csv_data = safe_convert_to_csv(analysis)
                 st.download_button(
@@ -291,15 +299,15 @@ def add_export_buttons(analysis: Dict[str, Any]):
                     data=csv_data,
                     file_name=f"ai_analysis_{timestamp}.csv",
                     mime="text/csv",
-                    key="csv_download"
+                    key=f"csv_download_{unique_suffix}"
                 )
                 st.success("✅ CSV export ready! Includes ALL analysis sections.")
             except Exception as e:
                 st.error(f"CSV export failed: {e}")
 
-    # JSON Export
+    # JSON Export - FIXED: Unique key
     with col2:
-        if st.button("📋 Export JSON", key="export_json_btn", use_container_width=True):
+        if st.button("📋 Export JSON", key=f"export_json_btn_{unique_suffix}", use_container_width=True):
             try:
                 # Clean the analysis data for JSON serialization
                 clean_analysis = clean_for_json(analysis)
@@ -309,15 +317,15 @@ def add_export_buttons(analysis: Dict[str, Any]):
                     data=json_data,
                     file_name=f"ai_analysis_{timestamp}.json",
                     mime="application/json",
-                    key="json_download"
+                    key=f"json_download_{unique_suffix}"
                 )
                 st.success("✅ JSON export ready! Complete analysis data.")
             except Exception as e:
                 st.error(f"JSON export failed: {e}")
 
-    # Summary Export
+    # Summary Export - FIXED: Unique key
     with col3:
-        if st.button("📧 Generate Summary", key="export_summary_btn", use_container_width=True):
+        if st.button("📧 Generate Summary", key=f"export_summary_btn_{unique_suffix}", use_container_width=True):
             try:
                 summary_data = safe_generate_summary(analysis)
                 st.download_button(
@@ -325,20 +333,25 @@ def add_export_buttons(analysis: Dict[str, Any]):
                     data=summary_data,
                     file_name=f"ai_summary_{timestamp}.txt",
                     mime="text/plain",
-                    key="summary_download"
+                    key=f"summary_download_{unique_suffix}"
                 )
                 st.success("✅ Summary export ready! Comprehensive overview.")
             except Exception as e:
                 st.error(f"Summary export failed: {e}")
 
-    # FIXED: Show preview without problematic expander key
-    if st.checkbox("👀 Show Export Preview", key="show_preview_checkbox"):
+    # FIXED: Show preview with unique keys
+    if st.checkbox("👀 Show Export Preview", key=f"show_preview_checkbox_{unique_suffix}"):
         tab1, tab2, tab3 = st.tabs(["📊 CSV Preview", "📋 JSON Preview", "📧 Summary Preview"])
         
         with tab1:
             try:
                 csv_preview = safe_convert_to_csv(analysis)
-                st.text_area("CSV Data", csv_preview[:1000] + "..." if len(csv_preview) > 1000 else csv_preview, height=200, key="csv_preview")
+                st.text_area(
+                    "CSV Data", 
+                    csv_preview[:1000] + "..." if len(csv_preview) > 1000 else csv_preview, 
+                    height=200, 
+                    key=f"csv_preview_{unique_suffix}"
+                )
             except Exception as e:
                 st.error(f"CSV preview error: {e}")
         
@@ -346,14 +359,24 @@ def add_export_buttons(analysis: Dict[str, Any]):
             try:
                 clean_analysis = clean_for_json(analysis)
                 json_preview = json.dumps(clean_analysis, indent=2, default=str)
-                st.text_area("JSON Data", json_preview[:1000] + "..." if len(json_preview) > 1000 else json_preview, height=200, key="json_preview")
+                st.text_area(
+                    "JSON Data", 
+                    json_preview[:1000] + "..." if len(json_preview) > 1000 else json_preview, 
+                    height=200, 
+                    key=f"json_preview_{unique_suffix}"
+                )
             except Exception as e:
                 st.error(f"JSON preview error: {e}")
         
         with tab3:
             try:
                 summary_preview = safe_generate_summary(analysis)
-                st.text_area("Summary", summary_preview[:1000] + "..." if len(summary_preview) > 1000 else summary_preview, height=200, key="summary_preview")
+                st.text_area(
+                    "Summary", 
+                    summary_preview[:1000] + "..." if len(summary_preview) > 1000 else summary_preview, 
+                    height=200, 
+                    key=f"summary_preview_{unique_suffix}"
+                )
             except Exception as e:
                 st.error(f"Summary preview error: {e}")
 
