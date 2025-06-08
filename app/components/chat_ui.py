@@ -11,7 +11,7 @@ def clean_text_for_display(text: str) -> str:
     """FIXED: Clean text to prevent LaTeX and formatting issues"""
     if not isinstance(text, str):
         text = str(text)
-    
+
     # Remove all problematic formatting that causes LaTeX issues
     text = text.replace("$", "\\$")      # Escape dollar signs
     text = text.replace("**", "")        # Remove bold markdown
@@ -24,7 +24,7 @@ def clean_text_for_display(text: str) -> str:
     text = text.replace("}", "\\}")      # Escape braces
     text = text.replace("\\n", " ")      # Replace newlines with spaces
     text = text.replace("\\r", " ")      # Replace carriage returns
-    
+
     return text
 
 
@@ -38,12 +38,12 @@ def display_message(message: Dict[str, str]):
             # Display form data summary
             st.markdown("**📋 Structured Analysis Request**")
             form_data = message["form_data"]
-            
+
             # Show key form details in a clean format
             basic = form_data.get("basic_info", {})
             current = form_data.get("current_state", {})
             goals = form_data.get("goals", {})
-            
+
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.info(f"**Company:** {basic.get('company_size', 'Unknown')}")
@@ -65,31 +65,31 @@ def display_message(message: Dict[str, str]):
 
 def render_chat_interface(orchestrator):
     """FIXED: Render the main chat interface with proper message display order"""
-    
+
     # ALWAYS display chat history FIRST (before any form interface)
     if st.session_state.messages:
         st.markdown("### 💬 Analysis History")
         for message in st.session_state.messages:
             display_message(message)
         st.markdown("---")
-    
+
     # Import and render form interface AFTER showing previous messages
     from app.components.form_ui import render_form_interface
-    
+
     # Check if user wants to use form interface
     use_chat = render_form_interface(orchestrator)
-    
+
     if not use_chat:
         return  # Form interface is being used, don't show chat input
-    
+
     # Chat input section
     st.markdown("### 💬 Continue Conversation")
-    
+
     if prompt := st.chat_input("Describe your AI use case, costs, or automation needs..."):
         # Add user message
         user_msg = {"role": "user", "content": prompt}
         st.session_state.messages.append(user_msg)
-        
+
         # Display user message immediately
         with st.chat_message("user"):
             # FIXED: Clean user input to prevent formatting issues
@@ -130,12 +130,12 @@ def render_chat_interface(orchestrator):
                 except Exception as e:
                     error_msg = f"Analysis Error: {str(e)}"
                     st.error(error_msg)
-                    
+
                     with st.expander("🔍 Error Details"):
                         st.code(traceback.format_exc())
-                    
+
                     st.session_state.messages.append({
-                        "role": "assistant", 
+                        "role": "assistant",
                         "content": error_msg
                     })
 
