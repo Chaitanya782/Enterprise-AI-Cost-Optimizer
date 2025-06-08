@@ -1,5 +1,5 @@
 """
-Enhanced data visualization components with fixed text formatting
+Enhanced data visualization components with improved spacing and design
 """
 import streamlit as st
 import plotly.graph_objects as go
@@ -44,7 +44,7 @@ def create_cost_comparison_chart(cost_breakdown: Dict[str, Dict[str, float]]) ->
     try:
         periods = ['daily_cost', 'monthly_cost', 'annual_cost']
         labels = ['Daily', 'Monthly', 'Annual']
-        colors = ['#3498db', '#2980b9', '#1f4e79']
+        colors = ['#667eea', '#764ba2', '#f093fb']
 
         # Filter valid models
         valid_models = [
@@ -76,7 +76,11 @@ def create_cost_comparison_chart(cost_breakdown: Dict[str, Dict[str, float]]) ->
                 textposition='auto',
                 marker_color=color,
                 visible=(i == 1),  # Show monthly by default
-                hovertemplate=f'<b>%{{x}}</b><br>{label}: $%{{y:,.2f}}<extra></extra>'
+                hovertemplate=f'<b>%{{x}}</b><br>{label}: $%{{y:,.2f}}<extra></extra>',
+                marker=dict(
+                    line=dict(width=0),
+                    opacity=0.8
+                )
             ))
 
         if not traces:
@@ -98,16 +102,23 @@ def create_cost_comparison_chart(cost_breakdown: Dict[str, Dict[str, float]]) ->
                     for i, label in enumerate(labels) if i < len(traces)
                 ]
             }],
-            title="Monthly AI Model Cost Comparison",
+            title={
+                "text": "Monthly AI Model Cost Comparison",
+                "x": 0.5,
+                "font": {"size": 20, "family": "Arial, sans-serif"}
+            },
             xaxis_title="AI Model",
             yaxis_title="Cost (USD)",
-            height=450,
+            height=500,
             showlegend=False,
             hovermode='x unified',
             plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Arial, sans-serif", size=12),
+            margin=dict(l=60, r=60, t=100, b=60)
         )
-        fig.update_xaxes(tickangle=45)
+        fig.update_xaxes(tickangle=45, tickfont=dict(size=11))
+        fig.update_yaxes(tickfont=dict(size=11))
         return fig
 
     except Exception as e:
@@ -136,7 +147,7 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
 
         fig = go.Figure()
 
-        # Add data traces
+        # Add data traces with improved styling
         traces = [
             ("Implementation Cost", cum_cost, '#e74c3c', 'lines+markers'),
             ("Cumulative Benefits", cum_benefit, '#27ae60', 'lines+markers'),
@@ -146,8 +157,8 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
         for name, data, color, mode in traces:
             fig.add_trace(go.Scatter(
                 x=years, y=data, mode=mode, name=name,
-                line=dict(color=color, width=3, dash='dash' if name == 'Net Benefit' else 'solid'),
-                marker=dict(size=8),
+                line=dict(color=color, width=4, dash='dash' if name == 'Net Benefit' else 'solid'),
+                marker=dict(size=10, line=dict(width=2, color='white')),
                 fill='tonexty' if name == 'Net Benefit' else None,
                 fillcolor='rgba(52,152,219,0.1)' if name == 'Net Benefit' else None,
                 hovertemplate=f'Year %{{x}}<br>{name}: $%{{y:,.0f}}<extra></extra>'
@@ -155,18 +166,38 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
 
         # Add break-even line
         if 0 < payback_years <= 5:
-            fig.add_vline(x=payback_years, line_width=2, line_dash="dash", line_color="orange",
-                          annotation_text=f"Break-even: {payback_years:.1f}y")
+            fig.add_vline(
+                x=payback_years, 
+                line_width=3, 
+                line_dash="dash", 
+                line_color="#f39c12",
+                annotation_text=f"Break-even: {payback_years:.1f}y",
+                annotation_position="top"
+            )
 
         fig.update_layout(
-            title="ROI Timeline & Break-Even Analysis",
+            title={
+                "text": "ROI Timeline & Break-Even Analysis",
+                "x": 0.5,
+                "font": {"size": 20, "family": "Arial, sans-serif"}
+            },
             xaxis_title="Years",
             yaxis_title="Amount (USD)",
-            height=450,
+            height=500,
             hovermode='x unified',
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+            legend=dict(
+                yanchor="top", 
+                y=0.99, 
+                xanchor="left", 
+                x=0.01,
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="rgba(0,0,0,0.2)",
+                borderwidth=1
+            ),
             plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Arial, sans-serif", size=12),
+            margin=dict(l=60, r=60, t=100, b=60)
         )
 
         return fig
@@ -177,7 +208,9 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
 
 
 def display_enhanced_analysis(analysis: Dict[str, Any]):
-    """Enhanced analysis display with comprehensive sections"""
+    """Enhanced analysis display with improved design"""
+    
+    # Compact executive summary with cards
     st.markdown("### 📊 Executive Summary")
 
     # Extract metrics
@@ -187,17 +220,29 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
     tasks_data = analysis.get("analysis", {}).get("tasks", {})
     roi_metrics = roi_data.get("basic_metrics") or roi_data.get("key_metrics", {})
 
-    # Metrics dashboard
+    # Compact metrics dashboard
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         roi_pct = roi_metrics.get("roi_percentage", 0)
-        st.metric("ROI", f"{roi_pct:.0f}%", delta="5-year projection")
+        st.markdown(f"""
+        <div class="metric-container">
+            <h4 style="margin: 0; color: #667eea;">ROI</h4>
+            <h2 style="margin: 0.2rem 0; color: #1f2937;">{roi_pct:.0f}%</h2>
+            <small style="color: #6b7280;">5-year projection</small>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col2:
         if infra_data:
             monthly_savings = infra_data.get("potential_savings", 0)
-            st.metric("Monthly Savings", f"${monthly_savings:,.0f}", delta="Infrastructure optimization")
+            st.markdown(f"""
+            <div class="metric-container">
+                <h4 style="margin: 0; color: #27ae60;">Monthly Savings</h4>
+                <h2 style="margin: 0.2rem 0; color: #1f2937;">${monthly_savings:,.0f}</h2>
+                <small style="color: #6b7280;">Infrastructure optimization</small>
+            </div>
+            """, unsafe_allow_html=True)
         elif cost_data.get("cost_breakdown"):
             cheapest_cost = min(
                 (costs.get("monthly_cost", float('inf'))
@@ -206,29 +251,47 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
                 default=float('inf')
             )
             if cheapest_cost < float('inf'):
-                st.metric("Lowest Monthly Cost", f"${cheapest_cost:,.0f}", delta="Best LLM option")
-            else:
-                st.metric("Cost Analysis", "Available", delta="Multiple models compared")
-        else:
-            st.metric("Cost Analysis", "Available", delta="See detailed breakdown")
+                st.markdown(f"""
+                <div class="metric-container">
+                    <h4 style="margin: 0; color: #f093fb;">Lowest Cost</h4>
+                    <h2 style="margin: 0.2rem 0; color: #1f2937;">${cheapest_cost:,.0f}</h2>
+                    <small style="color: #6b7280;">Best LLM option</small>
+                </div>
+                """, unsafe_allow_html=True)
 
     with col3:
         payback = roi_metrics.get("payback_period_years", 0)
         if payback and payback != float('inf'):
             if payback < 1:
                 payback_months = roi_metrics.get("payback_period_months", payback * 12)
-                st.metric("Payback", f"{payback_months:.1f} months", delta="Quick ROI")
+                st.markdown(f"""
+                <div class="metric-container">
+                    <h4 style="margin: 0; color: #4facfe;">Payback</h4>
+                    <h2 style="margin: 0.2rem 0; color: #1f2937;">{payback_months:.1f}mo</h2>
+                    <small style="color: #6b7280;">Quick ROI</small>
+                </div>
+                """, unsafe_allow_html=True)
             else:
-                st.metric("Payback", f"{payback:.1f} years", delta="Long-term value")
-        else:
-            st.metric("Implementation", "Ready", delta="Analysis complete")
+                st.markdown(f"""
+                <div class="metric-container">
+                    <h4 style="margin: 0; color: #4facfe;">Payback</h4>
+                    <h2 style="margin: 0.2rem 0; color: #1f2937;">{payback:.1f}yr</h2>
+                    <small style="color: #6b7280;">Long-term value</small>
+                </div>
+                """, unsafe_allow_html=True)
 
     with col4:
         confidence = analysis.get("confidence", 0)
         intent = analysis.get("intent", "general")
-        st.metric("Analysis Confidence", f"{confidence:.0%}", delta=f"{intent.title()} focus")
+        st.markdown(f"""
+        <div class="metric-container">
+            <h4 style="margin: 0; color: #43e97b;">Confidence</h4>
+            <h2 style="margin: 0.2rem 0; color: #1f2937;">{confidence:.0%}</h2>
+            <small style="color: #6b7280;">{intent.title()} focus</small>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.divider()
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # Build tabs - ENHANCED to include ALL sections
     tab_data = []
@@ -257,7 +320,7 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
                     render_recommendations_section(primary, analysis)
 
     # Export section at the bottom - INTEGRATED
-    st.divider()
+    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### 📥 Export Analysis Results")
     
     # Import and use the comprehensive export functionality

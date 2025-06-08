@@ -1,5 +1,5 @@
 """
-Fixed form-based input component with proper data handling
+Enhanced form-based input component with improved design
 """
 import streamlit as st
 from typing import Dict, Any, Optional, List
@@ -14,14 +14,21 @@ class AIAnalysisForm:
         self.form_data = {}
     
     def render_form(self) -> Optional[Dict[str, Any]]:
-        """Render the comprehensive analysis form"""
-        st.markdown("### 📋 Structured Analysis Form")
-        st.markdown("*Fill out this form for a comprehensive AI cost and ROI analysis*")
+        """Render the comprehensive analysis form with improved design"""
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 2rem; border-radius: 16px; margin-bottom: 2rem; text-align: center;">
+            <h2 style="color: white; margin-bottom: 0.5rem;">📋 Structured Analysis Form</h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 1.1rem;">
+                Get a comprehensive AI cost and ROI analysis tailored to your needs
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
         with st.form("ai_analysis_form"):
             # Basic Information
-            st.subheader("🏢 Basic Information")
-            col1, col2 = st.columns(2)
+            st.markdown("### 🏢 Basic Information")
+            col1, col2 = st.columns(2, gap="large")
             
             with col1:
                 company_size = st.selectbox(
@@ -52,9 +59,11 @@ class AIAnalysisForm:
                     help="When do you need to implement this?"
                 )
             
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             # Current State
-            st.subheader("📊 Current State")
-            col1, col2, col3 = st.columns(3)
+            st.markdown("### 📊 Current State")
+            col1, col2, col3 = st.columns(3, gap="medium")
             
             with col1:
                 current_spend = st.number_input(
@@ -107,9 +116,11 @@ class AIAnalysisForm:
                     help="Percentage of errors in current manual processes"
                 )
             
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             # Technical Details
-            st.subheader("⚙️ Technical Requirements")
-            col1, col2 = st.columns(2)
+            st.markdown("### ⚙️ Technical Requirements")
+            col1, col2 = st.columns(2, gap="large")
             
             with col1:
                 current_providers = st.multiselect(
@@ -139,9 +150,11 @@ class AIAnalysisForm:
                     help="What compliance standards do you need to meet?"
                 )
             
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             # Goals and Constraints
-            st.subheader("🎯 Goals & Constraints")
-            col1, col2 = st.columns(2)
+            st.markdown("### 🎯 Goals & Constraints")
+            col1, col2 = st.columns(2, gap="large")
             
             with col1:
                 budget_range = st.selectbox(
@@ -172,21 +185,29 @@ class AIAnalysisForm:
                     help="What metrics will define success for you?"
                 )
             
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             # Additional Context
-            st.subheader("📝 Additional Context")
-            specific_challenges = st.text_area(
-                "Specific Challenges",
-                placeholder="Describe any specific challenges or pain points you're facing...",
-                height=100
-            )
+            st.markdown("### 📝 Additional Context")
+            col1, col2 = st.columns(2, gap="large")
             
-            additional_requirements = st.text_area(
-                "Additional Requirements",
-                placeholder="Any other requirements, constraints, or goals...",
-                height=100
-            )
+            with col1:
+                specific_challenges = st.text_area(
+                    "Specific Challenges",
+                    placeholder="Describe any specific challenges or pain points you're facing...",
+                    height=120
+                )
             
-            # Submit button
+            with col2:
+                additional_requirements = st.text_area(
+                    "Additional Requirements",
+                    placeholder="Any other requirements, constraints, or goals...",
+                    height=120
+                )
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Submit button with improved styling
             submitted = st.form_submit_button(
                 "🚀 Generate Comprehensive Analysis",
                 use_container_width=True,
@@ -287,17 +308,30 @@ class AIAnalysisForm:
 
 
 def render_form_interface(orchestrator):
-    """Render the form-based interface"""
+    """Render the form-based interface with improved design"""
     form_handler = AIAnalysisForm()
     
-    # Add form toggle
+    # Add form toggle with better styling
     st.markdown("### 🎯 Choose Your Input Method")
-    input_method = st.radio(
-        "How would you like to provide information?",
-        ["💬 Chat Interface", "📋 Structured Form"],
-        horizontal=True,
-        help="Choose between conversational chat or a structured form"
-    )
+    
+    # Create columns for better layout
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        input_method = st.radio(
+            "How would you like to provide information?",
+            ["💬 Chat Interface", "📋 Structured Form"],
+            horizontal=True,
+            help="Choose between conversational chat or a structured form"
+        )
+    
+    with col2:
+        if st.button("ℹ️ Help", help="Get help choosing the right input method"):
+            st.info("""
+            **💬 Chat Interface**: Best for quick questions and conversational analysis
+            
+            **📋 Structured Form**: Best for comprehensive analysis with detailed requirements
+            """)
     
     if input_method == "📋 Structured Form":
         form_data = form_handler.render_form()

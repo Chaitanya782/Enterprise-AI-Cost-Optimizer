@@ -1,5 +1,5 @@
 """
-Enhanced main Streamlit application with improved UI and error handling
+Enhanced main Streamlit application with improved UI design
 """
 import streamlit as st
 from pathlib import Path
@@ -48,10 +48,10 @@ def initialize_session_state():
 def render_sidebar():
     """Render optimized sidebar with status and controls"""
     with st.sidebar:
-        st.header("🔧 Configuration")
+        st.markdown("## 🔧 Configuration")
         
         # Connection Status
-        st.subheader("🔌 Connection Status")
+        st.markdown("### 🔌 Connection Status")
         services = [
             ("Lyzr Studio", getattr(config, 'lyzr_api_key', None)),
             ("Google Gemini", getattr(config, 'gemini_api_key', None))
@@ -76,15 +76,18 @@ def render_sidebar():
         st.divider()
 
         # Usage statistics
-        st.subheader("📊 Usage Statistics")
+        st.markdown("### 📊 Usage Statistics")
         query_count = len([msg for msg in st.session_state.messages if msg["role"] == "user"])
-        st.metric("Total Queries", query_count)
-        st.metric("Estimated Cost", f"${st.session_state.total_cost:.4f}")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Queries", query_count)
+        with col2:
+            st.metric("Cost", f"${st.session_state.total_cost:.4f}")
 
         st.divider()
 
         # Example queries
-        st.subheader("💡 Try These Examples")
+        st.markdown("### 💡 Example Queries")
         example_labels = [
             "💰 Infrastructure Cost Optimization",
             "📊 LLM Cost Comparison",
@@ -95,7 +98,7 @@ def render_sidebar():
         ]
 
         for i, (label, query) in enumerate(zip(example_labels, get_example_queries())):
-            if st.button(label, key=f"example_{i}", help=f"Click to ask: {query[:100]}..."):
+            if st.button(label, key=f"example_{i}", help=f"Click to ask: {query[:100]}...", use_container_width=True):
                 st.session_state.messages.append({"role": "user", "content": query})
                 st.rerun()
 
@@ -104,13 +107,13 @@ def render_sidebar():
         # Control buttons
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🗑️ Clear Chat") and st.session_state.messages:
+            if st.button("🗑️ Clear", use_container_width=True) and st.session_state.messages:
                 st.session_state.messages.clear()
                 st.session_state.total_cost = 0.0
                 st.rerun()
 
         with col2:
-            if st.button("🔄 Reset App"):
+            if st.button("🔄 Reset", use_container_width=True):
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
@@ -121,19 +124,71 @@ def render_sidebar():
 
 def render_welcome_screen():
     """Render welcome screen with quick start guide"""
-    st.markdown("### 🚀 Welcome to Your AI Architecture Consultant")
+    # Hero section with better spacing
+    st.markdown("""
+    <div style="text-align: center; padding: 2rem 0;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 1rem; color: #1f2937;">
+            🚀 Welcome to Your AI Architecture Consultant
+        </h1>
+        <p style="font-size: 1.2rem; color: #6b7280; margin-bottom: 2rem;">
+            Optimize your AI costs, maximize ROI, and streamline automation
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.info(
-        "🎯 **I can help you with:**\n\n"
-        "• **💰 Cost Analysis**: Compare LLM costs and optimize spending\n"
-        "• **📋 Task Automation**: Identify AI automation opportunities\n"
-        "• **📊 ROI Calculation**: Calculate return on investment for AI projects\n"
-        "• **🛣️ Implementation Planning**: Get step-by-step AI adoption roadmaps\n\n"
-        "💬 **Choose between chat or structured form input below!**"
-    )
+    # Capabilities section with cards
+    st.markdown("### 🎯 What I Can Help You With")
+    
+    col1, col2 = st.columns(2, gap="large")
+    
+    with col1:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
+            <h4 style="color: white; margin-bottom: 0.5rem;">💰 Cost Analysis</h4>
+            <p style="color: rgba(255,255,255,0.9); margin: 0;">
+                Compare LLM costs and optimize spending across providers
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+                    padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
+            <h4 style="color: white; margin-bottom: 0.5rem;">📊 ROI Calculation</h4>
+            <p style="color: rgba(255,255,255,0.9); margin: 0;">
+                Calculate return on investment for AI projects
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
+                    padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
+            <h4 style="color: white; margin-bottom: 0.5rem;">📋 Task Automation</h4>
+            <p style="color: rgba(255,255,255,0.9); margin: 0;">
+                Identify AI automation opportunities
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); 
+                    padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
+            <h4 style="color: white; margin-bottom: 0.5rem;">🛣️ Implementation Planning</h4>
+            <p style="color: rgba(255,255,255,0.9); margin: 0;">
+                Get step-by-step AI adoption roadmaps
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Use cases section
     st.markdown("### 🔥 Popular Use Cases")
-    col1, col2 = st.columns(2)
+    
+    col1, col2 = st.columns(2, gap="large")
 
     with col1:
         st.markdown("""
@@ -196,7 +251,7 @@ def render_configuration_help():
 
 def main():
     """Enhanced main application entry point"""
-    # Page configuration
+    # Page configuration with better defaults
     st.set_page_config(
         page_title="Enterprise AI Cost Optimizer",
         page_icon="🤖",
@@ -204,36 +259,144 @@ def main():
         initial_sidebar_state="expanded"
     )
 
-    # Minimal CSS for better UX
+    # Enhanced CSS for better UI
     st.markdown("""
     <style>
+    /* Main container improvements */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1200px;
+    }
+    
+    /* Typography improvements */
+    .main h1 {
+        font-size: 2.5rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 1rem !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .main h2 {
+        font-size: 1.8rem !important;
+        font-weight: 600 !important;
+        margin-top: 2rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .main h3 {
+        font-size: 1.4rem !important;
+        font-weight: 600 !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.8rem !important;
+    }
+    
+    /* Chat message improvements */
     .stChatMessage {
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
+        padding: 1rem !important;
+        margin-bottom: 1rem !important;
+        border-radius: 12px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
     }
     
+    /* Button improvements */
     .stButton > button {
-        width: 100%;
-        text-align: left;
-        white-space: normal !important;
-        word-wrap: break-word !important;
-        height: auto;
-        padding: 0.5rem;
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+        border: none !important;
     }
     
-    /* Prevent text formatting issues */
-    .stMarkdown p {
-        font-weight: normal !important;
-        font-size: inherit !important;
+    .stButton > button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    }
+    
+    /* Sidebar improvements */
+    .css-1d391kg {
+        padding-top: 2rem !important;
+    }
+    
+    /* Form improvements */
+    .stSelectbox > div > div {
+        border-radius: 8px !important;
+    }
+    
+    .stTextInput > div > div > input {
+        border-radius: 8px !important;
+    }
+    
+    .stTextArea > div > div > textarea {
+        border-radius: 8px !important;
+    }
+    
+    /* Metric improvements */
+    .metric-container {
+        background: white;
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+    }
+    
+    /* Tab improvements */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    
+    /* Expander improvements */
+    .streamlit-expanderHeader {
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Remove excessive spacing */
+    .element-container {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Improve spacing between sections */
+    .stMarkdown {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Better column spacing */
+    .row-widget.stHorizontal {
+        gap: 1rem;
+    }
+    
+    /* Improve divider styling */
+    hr {
+        margin: 2rem 0 !important;
+        border: none !important;
+        height: 1px !important;
+        background: linear-gradient(90deg, transparent, #e5e7eb, transparent) !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
     initialize_session_state()
 
-    # Header
-    st.title("🤖 Enterprise AI Cost Optimizer")
-    st.markdown("### *Your AI Architecture Consultant for Cost Optimization & Automation*")
+    # Compact header
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <h1>🤖 Enterprise AI Cost Optimizer</h1>
+            <p style="font-size: 1.1rem; color: #6b7280; margin: 0;">
+                Your AI Architecture Consultant for Cost Optimization & Automation
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Initialize orchestrator if needed
     if not st.session_state.orchestrator and not st.session_state.initialization_error:
@@ -254,25 +417,26 @@ def main():
 
     render_sidebar()
 
-    # Main content
+    # Main content with better spacing
     if not st.session_state.messages:
         render_welcome_screen()
+        st.markdown("<br><br>", unsafe_allow_html=True)
 
-    # Chat interface (includes form interface)
+    # Chat interface
     if st.session_state.orchestrator:
         render_chat_interface(st.session_state.orchestrator)
     else:
         st.warning("🔄 Please fix the configuration issues above to start using the assistant.")
 
-    # Footer
-    st.markdown("---")
+    # Compact footer
+    st.markdown("<br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
         st.caption("Built with ❤️ using Lyzr Studio")
     with col2:
         st.caption("100xEngineers Buildathon 2.0")
     with col3:
-        status = "🟢 Ready for analysis" if st.session_state.orchestrator else "🔴 Configuration needed"
+        status = "🟢 Ready" if st.session_state.orchestrator else "🔴 Config needed"
         st.caption(status)
 
 
