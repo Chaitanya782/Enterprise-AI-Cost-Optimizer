@@ -24,7 +24,7 @@ def setup_logger(name: str = "ai_cost_optimizer") -> logging.Logger:
     # FIXED: Console handler with UTF-8 encoding support
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setStream(sys.stdout)
-    
+
     # Simple format without emojis to prevent encoding issues
     console_format = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -54,7 +54,7 @@ def setup_logger(name: str = "ai_cost_optimizer") -> logging.Logger:
 # Custom filter to remove problematic Unicode characters
 class UnicodeFilter(logging.Filter):
     """Filter to handle Unicode characters in log messages"""
-    
+
     def filter(self, record):
         if hasattr(record, 'msg') and isinstance(record.msg, str):
             # Replace problematic Unicode characters
