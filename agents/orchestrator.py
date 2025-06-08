@@ -1,5 +1,5 @@
 """
-Enhanced Multi-Agent Orchestrator with Advanced Intelligence and Top-Level Decision Making
+Enhanced Multi-Agent Orchestrator with Fixed Intent Classification for Specific Keywords
 """
 from typing import Dict, Any, Optional, List, Tuple
 import re
@@ -74,37 +74,40 @@ class RateLimiter:
 
 class AdvancedOrchestrator:
     """
-    Top-Level Advanced Orchestrator with Enhanced Intelligence
-    
-    Features:
-    - Advanced intent classification with confidence scoring
-    - Intelligent agent selection and coordination
-    - Context-aware analysis routing
-    - Sophisticated metric extraction and validation
-    - Dynamic analysis depth adjustment
-    - Cross-agent result synthesis
-    - Adaptive learning from user interactions
+    Top-Level Advanced Orchestrator with Enhanced Intelligence and FIXED Intent Classification
     """
 
-    # Enhanced intent classification with semantic understanding
+    # FIXED: Enhanced intent classification with specific keyword triggers
     INTENT_CLASSIFICATION = {
         "cost_optimization": {
+            # FIXED: Added specific trigger phrases that should immediately trigger cost analysis
+            "trigger_phrases": [
+                "cost analysis", "cost comparison", "compare costs", "llm costs", "api costs",
+                "pricing analysis", "cost breakdown", "cost optimization", "reduce costs",
+                "save money", "cheaper alternative", "budget analysis", "spending analysis"
+            ],
             "primary_indicators": [
                 "reduce cost", "save money", "cost optimization", "cheaper alternative",
                 "budget reduction", "cost efficiency", "lower spending", "cost cutting"
             ],
             "secondary_indicators": [
-                "compare prices", "cost analysis", "pricing comparison", "budget analysis",
+                "compare prices", "pricing comparison", "budget analysis",
                 "spending review", "cost breakdown", "financial optimization"
             ],
             "context_indicators": [
                 "expensive", "budget", "cost", "price", "spend", "fee", "charge"
             ],
-            "confidence_boost": 1.5,
+            "confidence_boost": 2.0,  # Increased boost for cost analysis
             "required_agents": ["cost"],
             "optional_agents": ["roi", "task"]
         },
         "roi_analysis": {
+            # FIXED: Added specific ROI trigger phrases
+            "trigger_phrases": [
+                "roi analysis", "roi calculation", "return on investment", "calculate roi",
+                "roi estimate", "investment return", "payback analysis", "break even analysis",
+                "business case", "financial justification", "investment analysis"
+            ],
             "primary_indicators": [
                 "return on investment", "roi calculation", "payback period", "break even",
                 "investment analysis", "financial return", "profit analysis", "value assessment"
@@ -116,11 +119,17 @@ class AdvancedOrchestrator:
             "context_indicators": [
                 "roi", "return", "investment", "benefit", "value", "profit", "payback"
             ],
-            "confidence_boost": 1.3,
+            "confidence_boost": 2.0,  # Increased boost for ROI analysis
             "required_agents": ["roi"],
             "optional_agents": ["cost", "task"]
         },
         "automation_planning": {
+            # FIXED: Added specific task/automation trigger phrases
+            "trigger_phrases": [
+                "task analysis", "automation analysis", "workflow analysis", "process analysis",
+                "automate tasks", "automation opportunities", "task automation", "workflow automation",
+                "process optimization", "automation planning", "task optimization"
+            ],
             "primary_indicators": [
                 "automate process", "workflow automation", "task automation", "process optimization",
                 "eliminate manual work", "streamline operations", "efficiency improvement"
@@ -130,13 +139,17 @@ class AdvancedOrchestrator:
                 "process improvement", "operational excellence", "productivity enhancement"
             ],
             "context_indicators": [
-                "automate", "workflow", "process", "manual", "efficiency", "productivity"
+                "automate", "workflow", "process", "manual", "efficiency", "productivity", "task"
             ],
-            "confidence_boost": 1.4,
+            "confidence_boost": 2.0,  # Increased boost for task analysis
             "required_agents": ["task"],
             "optional_agents": ["cost", "roi"]
         },
         "comprehensive_analysis": {
+            "trigger_phrases": [
+                "comprehensive analysis", "complete analysis", "full analysis", "detailed analysis",
+                "thorough analysis", "end-to-end analysis", "holistic analysis", "overall analysis"
+            ],
             "primary_indicators": [
                 "complete analysis", "comprehensive review", "full assessment", "detailed evaluation",
                 "thorough analysis", "end-to-end review", "holistic assessment"
@@ -148,11 +161,15 @@ class AdvancedOrchestrator:
             "context_indicators": [
                 "comprehensive", "complete", "full", "detailed", "thorough", "holistic"
             ],
-            "confidence_boost": 1.2,
+            "confidence_boost": 1.5,
             "required_agents": ["cost", "roi", "task"],
             "optional_agents": []
         },
         "vendor_comparison": {
+            "trigger_phrases": [
+                "compare providers", "provider comparison", "vendor comparison", "llm comparison",
+                "model comparison", "service comparison", "platform comparison"
+            ],
             "primary_indicators": [
                 "compare providers", "vendor comparison", "provider analysis", "service comparison",
                 "platform comparison", "solution comparison", "alternative evaluation"
@@ -164,7 +181,7 @@ class AdvancedOrchestrator:
             "context_indicators": [
                 "compare", "versus", "vs", "alternative", "option", "choice", "provider"
             ],
-            "confidence_boost": 1.3,
+            "confidence_boost": 1.8,
             "required_agents": ["cost"],
             "optional_agents": ["roi"]
         }
@@ -322,7 +339,7 @@ class AdvancedOrchestrator:
 
     def _advanced_intent_classification(self, user_query: str, session_context: Dict[str, Any] = None) -> Tuple[str, float, Dict[str, Any]]:
         """
-        Advanced intent classification with semantic understanding and confidence scoring
+        FIXED: Advanced intent classification with specific keyword triggers
         """
         query_lower = user_query.lower()
         
@@ -336,41 +353,61 @@ class AdvancedOrchestrator:
         analysis_metadata = {
             "matched_patterns": {},
             "confidence_factors": {},
-            "session_influence": 0.0
+            "session_influence": 0.0,
+            "trigger_matched": False
         }
 
-        # Score each intent category
+        # FIXED: First check for exact trigger phrases (highest priority)
         for intent, config in self.INTENT_CLASSIFICATION.items():
-            score = 0
-            matched_patterns = []
-
-            # Primary indicators (highest weight)
-            for indicator in config["primary_indicators"]:
-                if indicator in query_lower:
-                    score += 10 * len(indicator.split())
-                    matched_patterns.append(f"primary: {indicator}")
-
-            # Secondary indicators (medium weight)
-            for indicator in config["secondary_indicators"]:
-                if indicator in query_lower:
-                    score += 5 * len(indicator.split())
-                    matched_patterns.append(f"secondary: {indicator}")
-
-            # Context indicators (lower weight but cumulative)
-            context_matches = 0
-            for indicator in config["context_indicators"]:
-                if indicator in query_lower:
-                    context_matches += 1
-                    matched_patterns.append(f"context: {indicator}")
+            trigger_score = 0
+            matched_triggers = []
             
-            score += context_matches * 2
+            # Check for trigger phrases - these should immediately classify the intent
+            for trigger in config.get("trigger_phrases", []):
+                if trigger in query_lower:
+                    trigger_score += 50  # Very high score for trigger phrases
+                    matched_triggers.append(trigger)
+                    analysis_metadata["trigger_matched"] = True
+                    logger.info(f"TRIGGER MATCHED: '{trigger}' -> {intent}")
+            
+            if trigger_score > 0:
+                intent_scores[intent] = trigger_score * config["confidence_boost"]
+                analysis_metadata["matched_patterns"][intent] = [f"TRIGGER: {t}" for t in matched_triggers]
+                continue  # Skip other scoring for this intent if trigger matched
 
-            # Apply confidence boost
-            if score > 0:
-                score *= config["confidence_boost"]
+        # If no triggers matched, use regular scoring
+        if not analysis_metadata["trigger_matched"]:
+            for intent, config in self.INTENT_CLASSIFICATION.items():
+                score = 0
+                matched_patterns = []
 
-            intent_scores[intent] = score
-            analysis_metadata["matched_patterns"][intent] = matched_patterns
+                # Primary indicators (highest weight)
+                for indicator in config["primary_indicators"]:
+                    if indicator in query_lower:
+                        score += 10 * len(indicator.split())
+                        matched_patterns.append(f"primary: {indicator}")
+
+                # Secondary indicators (medium weight)
+                for indicator in config["secondary_indicators"]:
+                    if indicator in query_lower:
+                        score += 5 * len(indicator.split())
+                        matched_patterns.append(f"secondary: {indicator}")
+
+                # Context indicators (lower weight but cumulative)
+                context_matches = 0
+                for indicator in config["context_indicators"]:
+                    if indicator in query_lower:
+                        context_matches += 1
+                        matched_patterns.append(f"context: {indicator}")
+                
+                score += context_matches * 2
+
+                # Apply confidence boost
+                if score > 0:
+                    score *= config["confidence_boost"]
+
+                intent_scores[intent] = score
+                analysis_metadata["matched_patterns"][intent] = matched_patterns
 
         # Session context influence
         if session_context:
@@ -392,6 +429,11 @@ class AdvancedOrchestrator:
             max_intent = max(intent_scores.items(), key=lambda x: x[1])
             confidence = max_intent[1] / total_score if total_score > 0 else 0.0
             
+            # FIXED: Higher confidence for trigger matches
+            if analysis_metadata["trigger_matched"]:
+                confidence = min(0.95, confidence * 1.5)  # Boost confidence for trigger matches
+                logger.info(f"TRIGGER CONFIDENCE BOOST: {max_intent[0]} -> {confidence:.2f}")
+            
             # Adjust confidence based on clarity
             active_intents = [intent for intent, score in intent_scores.items() if score > 0]
             if len(active_intents) == 1:
@@ -405,6 +447,7 @@ class AdvancedOrchestrator:
         with self._cache_lock:
             self._intent_cache[cache_key] = result
 
+        logger.info(f"Intent Classification: {result[0]} (confidence: {result[1]:.2f})")
         return result
 
     def _intelligent_metric_extraction(self, query: str, intent: str, confidence: float) -> Dict[str, Any]:
@@ -997,6 +1040,57 @@ class AdvancedOrchestrator:
         quality_score = sum(factor * weight for factor, weight in zip(quality_factors, weights))
         
         return round(quality_score, 2)
+
+    # Additional helper methods for session management
+    def get_session_summary(self, session_id: str) -> Dict[str, Any]:
+        """Get comprehensive session summary with context insights"""
+        try:
+            summary = self.session_manager.get_session_summary(session_id)
+
+            # Add context insights
+            history = self.session_manager.get_session_history(session_id)
+            if history:
+                latest_query = history[-1].query
+                context_analysis = self.context_analyzer.analyze_context_relevance(latest_query, history[:-1])
+                summary['context_insights'] = [
+                    insight.__dict__ if hasattr(insight, '__dict__') else insight
+                    for insight in context_analysis.get('insights', [])
+                ]
+
+            return summary
+        except Exception as e:
+            logger.error(f"Failed to get session summary: {str(e)}")
+            return {"error": str(e)}
+
+    def export_session_data(self, session_id: str) -> Dict[str, Any]:
+        """Export comprehensive session data"""
+        try:
+            return self.session_manager.export_session_data(session_id)
+        except Exception as e:
+            logger.error(f"Failed to export session data: {str(e)}")
+            return {"error": str(e)}
+
+    def cleanup_sessions(self) -> int:
+        """Clean up expired sessions"""
+        try:
+            return self.session_manager.cleanup_expired_sessions()
+        except Exception as e:
+            logger.error(f"Failed to cleanup sessions: {str(e)}")
+            return 0
+
+    def get_rate_limiter_status(self) -> Dict[str, Any]:
+        """Get current rate limiter status"""
+        with self.rate_limiter.lock:
+            current_time = time.time()
+            recent_calls = len([t for t in self.rate_limiter.call_times if current_time - t < 60])
+
+            return {
+                "calls_in_last_minute": recent_calls,
+                "calls_per_minute_limit": self.rate_limiter.calls_per_minute,
+                "min_delay_between_calls": self.rate_limiter.min_delay,
+                "last_call_time": self.rate_limiter.last_call_time,
+                "time_since_last_call": current_time - self.rate_limiter.last_call_time
+            }
 
 # Maintain backward compatibility
 Orchestrator = AdvancedOrchestrator
