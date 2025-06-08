@@ -36,7 +36,8 @@ def initialize_session_state():
         'total_cost': 0.0,
         'orchestrator': None,
         'session_id': None,
-        'initialization_error': None
+        'initialization_error': None,
+        'show_debug': False
     }
 
     for key, value in defaults.items():
@@ -44,31 +45,23 @@ def initialize_session_state():
             st.session_state[key] = value
 
 
-def _check_service_status(service_name: str, api_key: str) -> tuple[str, bool]:
-    """Check if a service is configured"""
-    if api_key:
-        return f"**{service_name}:** ✅ Connected", True
-    return f"**{service_name}:** ❌ Not configured", False
-
-
 def render_sidebar():
     """Render optimized sidebar with status and controls"""
     with st.sidebar:
         st.header("🔧 Configuration")
+        
+        # Connection Status
         st.subheader("🔌 Connection Status")
-
-        # Check services
         services = [
             ("Lyzr Studio", getattr(config, 'lyzr_api_key', None)),
             ("Google Gemini", getattr(config, 'gemini_api_key', None))
         ]
 
         for service, api_key in services:
-            status, is_connected = _check_service_status(service, api_key)
-            if is_connected:
-                st.success(status)
+            if api_key:
+                st.success(f"**{service}:** ✅ Connected")
             else:
-                st.error(status)
+                st.error(f"**{service}:** ❌ Not configured")
 
         # Orchestrator status
         if st.session_state.orchestrator:
@@ -91,14 +84,13 @@ def render_sidebar():
         st.divider()
 
         # Example queries
-        st.subheader("💡 Try These Examples, please click and then copy-paste.")
-
+        st.subheader("💡 Try These Examples")
         example_labels = [
-            "💰 Infrastructure Cost Optimization ($85K/month)",
-            "📊 LLM Cost Comparison Analysis",
-            "✍️ Content Generation ROI Analysis",
-            "📄 Document Processing Automation",
-            "🎧 Customer Service Workflow Analysis",
+            "💰 Infrastructure Cost Optimization",
+            "📊 LLM Cost Comparison",
+            "✍️ Content Generation ROI",
+            "📄 Document Processing",
+            "🎧 Customer Service Analysis",
             "🤖 Cost-Effective LLM Selection"
         ]
 
@@ -124,8 +116,7 @@ def render_sidebar():
                 st.rerun()
 
         # Debug mode toggle
-        st.session_state.show_debug = st.checkbox("🔧 Debug Mode",
-                                                 value=st.session_state.get("show_debug", False))
+        st.session_state.show_debug = st.checkbox("🔧 Debug Mode", value=st.session_state.get("show_debug", False))
 
 
 def render_welcome_screen():
@@ -138,7 +129,7 @@ def render_welcome_screen():
         "• **📋 Task Automation**: Identify AI automation opportunities\n"
         "• **📊 ROI Calculation**: Calculate return on investment for AI projects\n"
         "• **🛣️ Implementation Planning**: Get step-by-step AI adoption roadmaps\n\n"
-        "💬 **Just describe your situation or ask a question to get started!**"
+        "💬 **Choose between chat or structured form input below!**"
     )
 
     st.markdown("### 🔥 Popular Use Cases")
@@ -161,17 +152,6 @@ def render_welcome_screen():
         - Customer support chatbot implementation
         - Data analysis and reporting automation
         """)
-
-    st.markdown("### 📝 Sample Questions You Can Ask")
-    sample_questions = [
-        "We spend $50K/month on OpenAI APIs. How can we reduce costs by 30%?",
-        "ROI analysis for automating our customer support with 1000 daily tickets",
-        "Compare GPT-4 vs Claude for content generation with 500 articles/month",
-        "What tasks should we automate first in our sales process?"
-    ]
-
-    for question in sample_questions:
-        st.markdown(f"• *{question}*")
 
 
 @st.cache_resource
@@ -201,7 +181,9 @@ def render_configuration_help():
         1. **Check your `.env` file** - Make sure it contains:
         ```
         LYZR_API_KEY=your_lyzr_api_key
-        LYZR_AGENT_ID=your_agent_id  
+        LYZR_AGENT_ID_ROI=your_roi_agent_id  
+        LYZR_AGENT_ID_COST=your_cost_agent_id
+        LYZR_AGENT_ID_TASK=your_task_agent_id
         LYZR_USER_ID=your_email
         GEMINI_API_KEY=your_gemini_key
         ```
@@ -222,10 +204,9 @@ def main():
         initial_sidebar_state="expanded"
     )
 
-    # FIXED: Minimal CSS that respects Streamlit themes
+    # Minimal CSS for better UX
     st.markdown("""
     <style>
-    /* Only essential chat improvements that work with both themes */
     .stChatMessage {
         word-wrap: break-word !important;
         overflow-wrap: break-word !important;
@@ -270,10 +251,8 @@ def main():
     # Main content
     if not st.session_state.messages:
         render_welcome_screen()
-    else:
-        st.markdown("---")
 
-    # Chat interface
+    # Chat interface (includes form interface)
     if st.session_state.orchestrator:
         render_chat_interface(st.session_state.orchestrator)
     else:
