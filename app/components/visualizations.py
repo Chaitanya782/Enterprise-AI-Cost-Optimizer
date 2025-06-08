@@ -1,5 +1,5 @@
 """
-Optimized data visualization components for AI Cost Optimizer
+Enhanced data visualization components with better error handling
 """
 import streamlit as st
 import plotly.graph_objects as go
@@ -156,13 +156,14 @@ def create_roi_timeline(roi_data: Dict[str, Any]) -> Optional[go.Figure]:
 
 
 def display_enhanced_analysis(analysis: Dict[str, Any]):
-    """Enhanced analysis display with horizontal tabs"""
+    """Enhanced analysis display with comprehensive sections"""
     st.markdown("### 📊 Executive Summary")
 
     # Extract metrics
     roi_data = analysis.get("analysis", {}).get("roi", {})
     cost_data = analysis.get("analysis", {}).get("costs", {})
     infra_data = analysis.get("analysis", {}).get("infrastructure", {})
+    tasks_data = analysis.get("analysis", {}).get("tasks", {})
     roi_metrics = roi_data.get("basic_metrics") or roi_data.get("key_metrics", {})
 
     # Metrics dashboard
@@ -208,16 +209,19 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
 
     st.divider()
 
-    # Build tabs
+    # Build tabs - ENHANCED to include ALL sections
     tab_data = []
     if cost_data or infra_data:
         tab_data.append(("💰 Cost Analysis", "cost", cost_data, infra_data))
     if roi_data:
         tab_data.append(("📊 ROI Analysis", "roi", roi_data, None))
-    if analysis.get("analysis", {}).get("tasks"):
-        tab_data.append(("📋 Task Analysis", "tasks", analysis.get("analysis", {}).get("tasks"), None))
+    if tasks_data:
+        tab_data.append(("📋 Task Analysis", "tasks", tasks_data, None))
     if analysis.get("recommendations"):
         tab_data.append(("🎯 Recommendations", "recommendations", analysis.get("recommendations"), None))
+    
+    # Always add export tab
+    tab_data.append(("📥 Export", "export", analysis, None))
 
     if tab_data:
         tab_names, section_keys, primary_data, secondary_data = zip(*tab_data)
@@ -233,12 +237,9 @@ def display_enhanced_analysis(analysis: Dict[str, Any]):
                     render_task_analysis_section(primary)
                 elif section_key == "recommendations":
                     render_recommendations_section(primary, analysis)
-
-    st.divider()
-    
-    # Export section
-    from app.components.export import add_export_buttons
-    add_export_buttons(analysis)
+                elif section_key == "export":
+                    from app.components.export import add_export_buttons
+                    add_export_buttons(primary)
 
 
 def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str, Any]):
@@ -264,7 +265,9 @@ def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str
 
         if detailed := infra_data.get("detailed_analysis"):
             st.markdown("**📋 Optimization Strategy:**")
-            st.write(detailed)
+            # Clean text for display
+            clean_text = detailed.replace('**', '').replace('*', '').replace('#', '')
+            st.write(clean_text)
 
     # LLM cost comparison
     if cost_data and cost_data.get("cost_breakdown"):
@@ -293,9 +296,25 @@ def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str
                 display_df.columns = [col.replace('_', ' ').title() for col in display_df.columns]
                 st.dataframe(display_df, use_container_width=True)
 
+        # Volume metrics
+        if vm := cost_data.get("volume_metrics"):
+            st.markdown("**📈 Usage Metrics:**")
+            col1, col2, col3 = st.columns(3)
+            metrics = [
+                ("Daily Requests", vm.get('daily_requests', 0)),
+                ("Monthly Requests", vm.get('monthly_requests', 0)),
+                ("Avg Tokens/Request", vm.get('avg_input_tokens', 0) + vm.get('avg_output_tokens', 0))
+            ]
+
+            for col, (label, value) in zip([col1, col2, col3], metrics):
+                with col:
+                    st.info(f"**{label}:** {value:,}")
+
     if analysis_text := cost_data.get("analysis"):
         st.markdown("**🔍 Detailed Cost Analysis:**")
-        st.write(analysis_text)
+        # Clean text for display
+        clean_text = analysis_text.replace('**', '').replace('*', '').replace('#', '')
+        st.write(clean_text)
 
 
 def render_roi_analysis_section(roi_data: Dict[str, Any]):
@@ -304,7 +323,7 @@ def render_roi_analysis_section(roi_data: Dict[str, Any]):
         st.plotly_chart(fig, use_container_width=True, key=generate_unique_key("roi_chart"))
 
     # Financial metrics
-    if metrics := (roi_data.get("basic_metrics") or roi_data.get("key_metrics")):
+    if metrics := (roi_data.get("basic_metrics") or roi_data.get("key_metrics") or roi_data.get("financial_metrics")):
         st.markdown("#### 💰 Financial Summary")
         col1, col2, col3 = st.columns(3)
 
@@ -318,9 +337,23 @@ def render_roi_analysis_section(roi_data: Dict[str, Any]):
             with col:
                 st.metric(label, f"${value:,.0f}")
 
+    # Scenario analysis
+    if scenarios := roi_data.get("scenario_analysis"):
+        st.markdown("#### 📈 Scenario Analysis")
+        scenario_cols = st.columns(3)
+
+        for i, (scenario, data) in enumerate(scenarios.items()):
+            if i < 3:  # Limit to 3 scenarios
+                with scenario_cols[i]:
+                    roi_pct = data.get("roi_percentage", 0)
+                    payback = data.get("payback_period_months", 0)
+                    st.metric(f"{scenario.title()} Scenario", f"{roi_pct}% ROI", f"{payback:.1f}mo payback")
+
     if detailed := roi_data.get("detailed_analysis"):
         st.markdown("**🔍 Detailed ROI Analysis:**")
-        st.write(detailed)
+        # Clean text for display
+        clean_text = detailed.replace('**', '').replace('*', '').replace('#', '')
+        st.write(clean_text)
 
 
 def render_task_analysis_section(tasks_data: Any):
@@ -328,17 +361,48 @@ def render_task_analysis_section(tasks_data: Any):
     if isinstance(tasks_data, dict):
         if detailed := tasks_data.get("detailed_analysis"):
             st.markdown("**🔍 Detailed Task Analysis:**")
-            st.write(detailed)
+            # Clean text for display
+            clean_text = detailed.replace('**', '').replace('*', '').replace('#', '')
+            st.write(clean_text)
+        elif auto_analysis := tasks_data.get("automated_analysis"):
+            if aa := auto_analysis.get("automation_analysis"):
+                st.markdown("#### 🤖 Automation Potential")
+
+                col1, col2, col3 = st.columns(3)
+                automation_metrics = [
+                    ("Automation Potential", aa.get("automation_potential", 0), "%"),
+                    ("Weekly Time Saved", aa.get("weekly_time_saved", 0), " hours"),
+                    ("Annual Savings", aa.get("annual_cost_savings", 0), "")
+                ]
+
+                for col, (label, value, suffix) in zip([col1, col2, col3], automation_metrics):
+                    with col:
+                        if "%" in suffix:
+                            st.metric(label, f"{value:.0%}")
+                        elif "$" not in suffix and suffix:
+                            st.metric(label, f"{value:.1f}{suffix}")
+                        else:
+                            st.metric(label, f"${value:,.0f}")
+
+            if detailed := auto_analysis.get("detailed_analysis"):
+                st.markdown("**📋 Implementation Analysis:**")
+                # Clean text for display
+                clean_text = detailed.replace('**', '').replace('*', '').replace('#', '')
+                st.write(clean_text)
     elif isinstance(tasks_data, str):
         st.markdown("**📋 Task Analysis:**")
-        st.write(tasks_data)
+        # Clean text for display
+        clean_text = tasks_data.replace('**', '').replace('*', '').replace('#', '')
+        st.write(clean_text)
 
 
 def render_recommendations_section(recommendations: List[str], analysis: Dict[str, Any]):
     """Render the recommendations section"""
     st.markdown("#### 🎯 Key Recommendations")
     for i, rec in enumerate(recommendations, 1):
-        st.markdown(f"**{i}.** {rec}")
+        # Clean recommendation text
+        clean_rec = str(rec).replace('**', '').replace('*', '').replace('#', '')
+        st.markdown(f"**{i}.** {clean_rec}")
 
     st.markdown("#### 📅 Implementation Roadmap")
 

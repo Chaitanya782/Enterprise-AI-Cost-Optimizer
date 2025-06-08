@@ -1,5 +1,5 @@
 """
-Optimized Chat UI components for Streamlit
+Optimized Chat UI components for Streamlit with fixed text formatting
 """
 import streamlit as st
 from typing import Dict, Any
@@ -33,13 +33,18 @@ def display_message(message: Dict[str, str]):
                 else:
                     st.metric("Team Size", f"{current.get('team_size', 0)} people")
         else:
-            # Escape dollar signs to prevent LaTeX rendering issues
-            content = message["content"].replace("$", r"\$")
+            # FIXED: Properly escape content to prevent formatting issues
+            content = message["content"]
+            # Remove problematic characters that cause formatting issues
+            content = content.replace("$", "\\$")  # Escape dollar signs
+            content = content.replace("**", "")    # Remove bold formatting
+            content = content.replace("*", "")     # Remove italic formatting
+            content = content.replace("#", "")     # Remove header formatting
             st.markdown(content)
 
 
 def render_chat_interface(orchestrator):
-    """Render the main chat interface"""
+    """Render the main chat interface with form option"""
     # Import and render form interface first
     from app.components.form_ui import render_form_interface
     
@@ -63,7 +68,9 @@ def render_chat_interface(orchestrator):
         
         # Display user message
         with st.chat_message("user"):
-            st.markdown(prompt)
+            # FIXED: Escape user input to prevent formatting issues
+            clean_prompt = prompt.replace("$", "\\$")
+            st.markdown(clean_prompt)
 
         # Get assistant response
         with st.chat_message("assistant"):

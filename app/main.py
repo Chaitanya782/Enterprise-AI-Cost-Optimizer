@@ -1,5 +1,5 @@
 """
-Optimized main Streamlit application for Enterprise AI Cost Optimizer
+Enhanced main Streamlit application with improved UI and error handling
 """
 import streamlit as st
 from pathlib import Path
@@ -195,7 +195,7 @@ def render_configuration_help():
 
 
 def main():
-    """Optimized main application entry point"""
+    """Enhanced main application entry point"""
     # Page configuration
     st.set_page_config(
         page_title="Enterprise AI Cost Optimizer",
@@ -219,6 +219,12 @@ def main():
         word-wrap: break-word !important;
         height: auto;
         padding: 0.5rem;
+    }
+    
+    /* Prevent text formatting issues */
+    .stMarkdown p {
+        font-weight: normal !important;
+        font-size: inherit !important;
     }
     </style>
     """, unsafe_allow_html=True)
