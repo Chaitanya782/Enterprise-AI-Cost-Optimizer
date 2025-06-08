@@ -1,5 +1,5 @@
 """
-Form-based input component for structured data collection
+Fixed form-based input component with proper data handling
 """
 import streamlit as st
 from typing import Dict, Any, Optional, List
@@ -194,7 +194,7 @@ class AIAnalysisForm:
             )
             
             if submitted:
-                # Compile form data
+                # FIXED: Properly validate and compile form data
                 form_data = {
                     "basic_info": {
                         "company_size": company_size,
@@ -203,28 +203,28 @@ class AIAnalysisForm:
                         "urgency": urgency
                     },
                     "current_state": {
-                        "current_spend": current_spend,
-                        "team_size": team_size,
-                        "daily_requests": daily_requests,
-                        "hours_per_week": hours_per_week,
-                        "avg_hourly_rate": avg_hourly_rate,
-                        "error_rate": error_rate
+                        "current_spend": float(current_spend) if current_spend else 0,
+                        "team_size": int(team_size) if team_size else 0,
+                        "daily_requests": int(daily_requests) if daily_requests else 0,
+                        "hours_per_week": float(hours_per_week) if hours_per_week else 0,
+                        "avg_hourly_rate": float(avg_hourly_rate) if avg_hourly_rate else 0,
+                        "error_rate": float(error_rate) if error_rate else 0
                     },
                     "technical": {
-                        "current_providers": current_providers,
+                        "current_providers": current_providers or [],
                         "integration_complexity": integration_complexity,
                         "data_sensitivity": data_sensitivity,
-                        "compliance_requirements": compliance_requirements
+                        "compliance_requirements": compliance_requirements or []
                     },
                     "goals": {
                         "budget_range": budget_range,
-                        "target_savings": target_savings,
+                        "target_savings": float(target_savings) if target_savings else 0,
                         "roi_timeline": roi_timeline,
-                        "success_metrics": success_metrics
+                        "success_metrics": success_metrics or []
                     },
                     "context": {
-                        "specific_challenges": specific_challenges,
-                        "additional_requirements": additional_requirements
+                        "specific_challenges": specific_challenges.strip() if specific_challenges else "",
+                        "additional_requirements": additional_requirements.strip() if additional_requirements else ""
                     },
                     "timestamp": datetime.now().isoformat()
                 }
@@ -247,28 +247,34 @@ class AIAnalysisForm:
             f"Implementation Timeline: {basic.get('urgency', 'Not specified')}"
         ]
         
+        # Add financial information
         if current.get("current_spend", 0) > 0:
             query_parts.append(f"Current monthly AI spend: ${current['current_spend']:,}")
         
+        # Add usage information
         if current.get("daily_requests", 0) > 0:
             query_parts.append(f"Daily AI requests: {current['daily_requests']:,}")
         
+        # Add team and cost information
         if current.get("hours_per_week", 0) > 0:
             query_parts.append(f"Manual work: {current['hours_per_week']} hours/week at ${current.get('avg_hourly_rate', 50)}/hour")
         
         if current.get("team_size", 0) > 0:
             query_parts.append(f"Team size: {current['team_size']} people")
         
+        # Add technical details
         if technical.get("current_providers"):
             providers = ", ".join(technical["current_providers"])
             query_parts.append(f"Current providers: {providers}")
         
+        # Add goals
         if goals.get("target_savings", 0) > 0:
             query_parts.append(f"Target cost reduction: {goals['target_savings']}%")
         
         if goals.get("budget_range"):
             query_parts.append(f"Implementation budget: {goals['budget_range']}")
         
+        # Add context
         if context.get("specific_challenges"):
             query_parts.append(f"Challenges: {context['specific_challenges']}")
         
@@ -297,22 +303,23 @@ def render_form_interface(orchestrator):
         form_data = form_handler.render_form()
         
         if form_data:
-            # Convert form data to query
-            query = form_handler.convert_form_to_query(form_data)
-            
-            # Store form data in session state
-            st.session_state.last_form_data = form_data
-            
-            # Add to messages
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": "📋 Structured Analysis Request",
-                "form_data": form_data
-            })
-            
-            # Process with orchestrator
-            with st.spinner("🤖 Processing your comprehensive analysis request..."):
-                try:
+            # FIXED: Properly process form data
+            try:
+                # Convert form data to query
+                query = form_handler.convert_form_to_query(form_data)
+                
+                # Store form data in session state
+                st.session_state.last_form_data = form_data
+                
+                # Add to messages with proper formatting
+                st.session_state.messages.append({
+                    "role": "user", 
+                    "content": "Structured Analysis Request Submitted",
+                    "form_data": form_data
+                })
+                
+                # Process with orchestrator
+                with st.spinner("🤖 Processing your comprehensive analysis request..."):
                     if "session_id" not in st.session_state:
                         st.session_state.session_id = f"form_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                     
@@ -327,19 +334,17 @@ def render_form_interface(orchestrator):
                     }
                     st.session_state.messages.append(assistant_msg)
                     
-                    # Display the analysis
-                    from app.components.visualizations import display_enhanced_analysis
-                    display_enhanced_analysis(response)
-                    
                     st.session_state.total_cost += 0.02  # Higher cost for comprehensive analysis
                     
-                except Exception as e:
-                    st.error(f"❌ Analysis Error: {str(e)}")
-                    st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": f"❌ Analysis Error: {str(e)}"
-                    })
-            
-            st.rerun()
+                    st.success("✅ Analysis completed! Scroll up to see your previous conversations and results.")
+                    st.rerun()
+                    
+            except Exception as e:
+                st.error(f"❌ Form Processing Error: {str(e)}")
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": f"Form Processing Error: {str(e)}"
+                })
+                st.rerun()
     
     return input_method == "💬 Chat Interface"

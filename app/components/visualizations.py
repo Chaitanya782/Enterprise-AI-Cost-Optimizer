@@ -1,5 +1,5 @@
 """
-Enhanced data visualization components with integrated export functionality
+Enhanced data visualization components with fixed text formatting
 """
 import streamlit as st
 import plotly.graph_objects as go
@@ -13,6 +13,27 @@ from datetime import datetime
 def generate_unique_key(prefix: str = "chart") -> str:
     """Generate unique key for Streamlit components"""
     return f"{prefix}_{uuid.uuid4().hex[:8]}"
+
+
+def clean_text_for_display(text: str) -> str:
+    """FIXED: Clean text to prevent LaTeX and formatting issues"""
+    if not isinstance(text, str):
+        text = str(text)
+    
+    # Remove all problematic formatting that causes LaTeX issues
+    text = text.replace("$", "\\$")      # Escape dollar signs
+    text = text.replace("**", "")        # Remove bold markdown
+    text = text.replace("*", "")         # Remove italic markdown
+    text = text.replace("#", "")         # Remove header markdown
+    text = text.replace("`", "")         # Remove code markdown
+    text = text.replace("_", "\\_")      # Escape underscores
+    text = text.replace("^", "\\^")      # Escape carets
+    text = text.replace("{", "\\{")      # Escape braces
+    text = text.replace("}", "\\}")      # Escape braces
+    text = text.replace("\\n", " ")      # Replace newlines with spaces
+    text = text.replace("\\r", " ")      # Replace carriage returns
+    
+    return text
 
 
 def create_cost_comparison_chart(cost_breakdown: Dict[str, Dict[str, float]]) -> Optional[go.Figure]:
@@ -267,8 +288,8 @@ def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str
 
         if detailed := infra_data.get("detailed_analysis"):
             st.markdown("**📋 Optimization Strategy:**")
-            # Clean text for display
-            clean_text = detailed.replace('**', '').replace('*', '').replace('#', '')
+            # FIXED: Clean text for display
+            clean_text = clean_text_for_display(detailed)
             st.write(clean_text)
 
     # LLM cost comparison
@@ -314,8 +335,8 @@ def render_cost_analysis_section(cost_data: Dict[str, Any], infra_data: Dict[str
 
     if analysis_text := cost_data.get("analysis"):
         st.markdown("**🔍 Detailed Cost Analysis:**")
-        # Clean text for display
-        clean_text = analysis_text.replace('**', '').replace('*', '').replace('#', '')
+        # FIXED: Clean text for display
+        clean_text = clean_text_for_display(analysis_text)
         st.write(clean_text)
 
 
@@ -353,8 +374,8 @@ def render_roi_analysis_section(roi_data: Dict[str, Any]):
 
     if detailed := roi_data.get("detailed_analysis"):
         st.markdown("**🔍 Detailed ROI Analysis:**")
-        # Clean text for display
-        clean_text = detailed.replace('**', '').replace('*', '').replace('#', '')
+        # FIXED: Clean text for display
+        clean_text = clean_text_for_display(detailed)
         st.write(clean_text)
 
 
@@ -363,8 +384,8 @@ def render_task_analysis_section(tasks_data: Any):
     if isinstance(tasks_data, dict):
         if detailed := tasks_data.get("detailed_analysis"):
             st.markdown("**🔍 Detailed Task Analysis:**")
-            # Clean text for display
-            clean_text = detailed.replace('**', '').replace('*', '').replace('#', '')
+            # FIXED: Clean text for display
+            clean_text = clean_text_for_display(detailed)
             st.write(clean_text)
         elif auto_analysis := tasks_data.get("automated_analysis"):
             if aa := auto_analysis.get("automation_analysis"):
@@ -388,13 +409,13 @@ def render_task_analysis_section(tasks_data: Any):
 
             if detailed := auto_analysis.get("detailed_analysis"):
                 st.markdown("**📋 Implementation Analysis:**")
-                # Clean text for display
-                clean_text = detailed.replace('**', '').replace('*', '').replace('#', '')
+                # FIXED: Clean text for display
+                clean_text = clean_text_for_display(detailed)
                 st.write(clean_text)
     elif isinstance(tasks_data, str):
         st.markdown("**📋 Task Analysis:**")
-        # Clean text for display
-        clean_text = tasks_data.replace('**', '').replace('*', '').replace('#', '')
+        # FIXED: Clean text for display
+        clean_text = clean_text_for_display(tasks_data)
         st.write(clean_text)
 
 
@@ -402,8 +423,8 @@ def render_recommendations_section(recommendations: List[str], analysis: Dict[st
     """Render the recommendations section"""
     st.markdown("#### 🎯 Key Recommendations")
     for i, rec in enumerate(recommendations, 1):
-        # Clean recommendation text
-        clean_rec = str(rec).replace('**', '').replace('*', '').replace('#', '')
+        # FIXED: Clean recommendation text
+        clean_rec = clean_text_for_display(str(rec))
         st.markdown(f"**{i}.** {clean_rec}")
 
     st.markdown("#### 📅 Implementation Roadmap")

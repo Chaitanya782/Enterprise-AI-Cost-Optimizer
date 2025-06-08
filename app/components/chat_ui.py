@@ -1,5 +1,5 @@
 """
-Optimized Chat UI components for Streamlit with fixed text formatting
+Fixed Chat UI components with proper form handling and text formatting
 """
 import streamlit as st
 from typing import Dict, Any
@@ -18,58 +18,71 @@ def display_message(message: Dict[str, str]):
             st.markdown("**📋 Structured Analysis Request**")
             form_data = message["form_data"]
             
-            # Show key form details
+            # Show key form details in a clean format
             basic = form_data.get("basic_info", {})
             current = form_data.get("current_state", {})
+            goals = form_data.get("goals", {})
             
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Company", basic.get("company_size", "Unknown"))
+                st.info(f"**Company:** {basic.get('company_size', 'Unknown')}")
+                st.info(f"**Industry:** {basic.get('industry', 'Unknown')}")
             with col2:
-                st.metric("Use Case", basic.get("use_case", "Unknown"))
+                st.info(f"**Use Case:** {basic.get('use_case', 'Unknown')}")
+                if current.get('current_spend', 0) > 0:
+                    st.info(f"**Monthly Spend:** ${current['current_spend']:,}")
             with col3:
-                if current.get("current_spend", 0) > 0:
-                    st.metric("Monthly Spend", f"${current['current_spend']:,}")
-                else:
-                    st.metric("Team Size", f"{current.get('team_size', 0)} people")
+                st.info(f"**Team Size:** {current.get('team_size', 0)} people")
+                if goals.get('target_savings', 0) > 0:
+                    st.info(f"**Target Savings:** {goals['target_savings']}%")
         else:
-            # FIXED: Properly escape content to prevent formatting issues
+            # FIXED: Properly clean content to prevent LaTeX and formatting issues
             content = message["content"]
-            # Remove problematic characters that cause formatting issues
-            content = content.replace("$", "\\$")  # Escape dollar signs
-            content = content.replace("**", "")    # Remove bold formatting
-            content = content.replace("*", "")     # Remove italic formatting
-            content = content.replace("#", "")     # Remove header formatting
+            # Remove all problematic formatting that causes LaTeX issues
+            content = content.replace("$", "\\$")    # Escape dollar signs
+            content = content.replace("**", "")      # Remove bold markdown
+            content = content.replace("*", "")       # Remove italic markdown
+            content = content.replace("#", "")       # Remove header markdown
+            content = content.replace("`", "")       # Remove code markdown
+            content = content.replace("_", "\\_")    # Escape underscores
+            content = content.replace("^", "\\^")    # Escape carets
+            content = content.replace("{", "\\{")    # Escape braces
+            content = content.replace("}", "\\}")    # Escape braces
             st.markdown(content)
 
 
 def render_chat_interface(orchestrator):
     """Render the main chat interface with form option"""
-    # Import and render form interface first
+    # FIXED: Always show previous operations first, then form interface
+    
+    # Display chat history FIRST (before form interface)
+    if st.session_state.messages:
+        st.markdown("### 💬 Previous Conversations")
+        for message in st.session_state.messages:
+            display_message(message)
+        st.markdown("---")
+    
+    # Import and render form interface
     from app.components.form_ui import render_form_interface
     
     # Check if user wants to use form interface
     use_chat = render_form_interface(orchestrator)
     
     if not use_chat:
-        return  # Form interface is being used
+        return  # Form interface is being used, don't show chat input
     
-    st.markdown("---")
+    # Chat input section
+    st.markdown("### 💬 Continue Conversation")
     
-    # Display chat history
-    for message in st.session_state.messages:
-        display_message(message)
-
-    # Chat input
     if prompt := st.chat_input("Describe your AI use case, costs, or automation needs..."):
         # Add user message
         user_msg = {"role": "user", "content": prompt}
         st.session_state.messages.append(user_msg)
         
-        # Display user message
+        # Display user message immediately
         with st.chat_message("user"):
-            # FIXED: Escape user input to prevent formatting issues
-            clean_prompt = prompt.replace("$", "\\$")
+            # FIXED: Clean user input to prevent formatting issues
+            clean_prompt = prompt.replace("$", "\\$").replace("**", "").replace("*", "")
             st.markdown(clean_prompt)
 
         # Get assistant response
@@ -104,7 +117,7 @@ def render_chat_interface(orchestrator):
                     st.session_state.total_cost += 0.01
 
                 except Exception as e:
-                    error_msg = f"❌ Analysis Error: {str(e)}"
+                    error_msg = f"Analysis Error: {str(e)}"
                     st.error(error_msg)
                     
                     with st.expander("🔍 Error Details"):
